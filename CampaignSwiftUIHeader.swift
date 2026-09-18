@@ -39,7 +39,9 @@ struct CampaignSwiftUIHeader: View {
 
             HStack(alignment: .top, spacing: 12) {
                 dataCard
+                    .frame(width: 395)
                 campaignCard
+                    .layoutPriority(1)
             }
             .padding(.top, 12)
         }
@@ -148,7 +150,9 @@ struct CampaignSwiftUIHeader: View {
                     tint: purple,
                     action: onFanpageChanged
                 )
+                .layoutPriority(1)
                 actionIconButton("Pages", icon: "arrow.clockwise", action: onRefreshPages)
+                    .frame(width: 76)
             }
 
             Button(action: onCreateCampaign) {
