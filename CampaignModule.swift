@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import SwiftUI
 
 final class CampaignWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
     let dataSource = CampaignDataSource()
@@ -12,6 +13,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     let apiStatusLabel = NSTextField(labelWithString: "")
     let logView = NSTextView()
     let progress = NSProgressIndicator()
+    let headerModel = CampaignHeaderModel()
 
     // V1.6.6 — Operations Dashboard metrics.
     let metricTotalValue = NSTextField(labelWithString: "0")
@@ -170,7 +172,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         ])
 
         setupSidebar(sidebar, activity: bottom)
-        setupHeader(header)
+        setupModernHeader(header)
         setupOverview(overview)
         setupTable(tableScroll)
         setupBottom(bottom)
@@ -194,7 +196,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.2")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.0")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -430,7 +432,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.2")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.0")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -540,7 +542,102 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         return card
     }
 
-    func setupHeader(_ header: NSView) {
+    private func setupModernHeader(_ header: NSView) {
+        searchField.delegate = self
+        searchField.stringValue = headerModel.searchText
+
+        displayLinkPopup.removeAllItems()
+        displayLinkPopup.addItems(
+            withTitles: CreativeDisplayLinkPreset.allCases.map(\.displayName)
+        )
+        if let index = CreativeDisplayLinkPreset.allCases.firstIndex(
+            of: CreativeDisplayLinkConfig.shared.selected
+        ) {
+            displayLinkPopup.selectItem(at: index)
+        }
+        displayLinkPopup.target = self
+        displayLinkPopup.action = #selector(displayLinkChanged(_:))
+
+        fanpagePopup.removeAllItems()
+        fanpagePopup.addItem(
+            withTitle: FacebookPageSelectionConfig.shared.selectedPage.menuTitle
+        )
+        fanpagePopup.target = self
+        fanpagePopup.action = #selector(fanpageChanged(_:))
+
+        refreshPagesButton.title = "Pages"
+        refreshPagesButton.target = self
+        refreshPagesButton.action = #selector(refreshFacebookPagesAction)
+
+        languagePopupButton.target = self
+        languagePopupButton.action = #selector(showLanguagePopover(_:))
+        configureLanguagePopover()
+        refreshLanguageSelector()
+
+        settingsButton.target = self
+        settingsButton.action = #selector(openAPISettings)
+
+        headerModel.displayLink =
+            CreativeDisplayLinkConfig.shared.selected.displayName
+        headerModel.fanpageTitle =
+            FacebookPageSelectionConfig.shared.selectedPage.menuTitle
+        headerModel.summary = summaryLabel.stringValue
+
+        let hosting = NSHostingView(
+            rootView: CampaignSwiftUIHeader(
+                model: headerModel,
+                displayLinkOptions: CreativeDisplayLinkPreset.allCases.map(\.displayName),
+                onSearchChanged: { [weak self] value in
+                    guard let self else { return }
+                    self.searchField.stringValue = value
+                    self.applyFilter()
+                },
+                onRefresh: { [weak self] in self?.refreshAction() },
+                onSelectAll: { [weak self] in self?.selectAllReady() },
+                onSelectNew: { [weak self] in self?.selectLatestImportedData() },
+                onClear: { [weak self] in self?.clearSelection() },
+                onDisplayLinkChanged: { [weak self] value in
+                    guard let self,
+                          let index = CreativeDisplayLinkPreset.allCases.firstIndex(
+                            where: { $0.displayName == value }
+                          ) else { return }
+                    self.displayLinkPopup.selectItem(at: index)
+                    self.displayLinkChanged(self.displayLinkPopup)
+                },
+                onLanguages: { [weak self, weak header] in
+                    guard let self, let header else { return }
+                    self.languagePopover.show(
+                        relativeTo: header.bounds,
+                        of: header,
+                        preferredEdge: .maxY
+                    )
+                },
+                onFanpageChanged: { [weak self] value in
+                    guard let self,
+                          let index = self.facebookPages.firstIndex(
+                            where: { $0.menuTitle == value }
+                          ) else { return }
+                    self.fanpagePopup.selectItem(at: index)
+                    self.fanpageChanged(self.fanpagePopup)
+                },
+                onRefreshPages: { [weak self] in self?.refreshFacebookPagesAction() },
+                onAPI: { [weak self] in self?.openAPISettings() },
+                onCreateCampaign: { [weak self] in self?.createCampaignReal() }
+            )
+        )
+        hosting.translatesAutoresizingMaskIntoConstraints = false
+        header.addSubview(hosting)
+        NSLayoutConstraint.activate([
+            hosting.leadingAnchor.constraint(equalTo: header.leadingAnchor),
+            hosting.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            hosting.topAnchor.constraint(equalTo: header.topAnchor),
+            hosting.bottomAnchor.constraint(equalTo: header.bottomAnchor)
+        ])
+    }
+
+    // Legacy AppKit header retained temporarily as a rollback path while the
+    // SwiftUI command surface is validated against the existing engine.
+    private func setupHeader(_ header: NSView) {
         let title =
             NSTextField(
                 labelWithString: "Campaign Automation"
@@ -1878,6 +1975,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
             summaryLabel.stringValue =
                 "\(ready) READY  •  \(selected) in current run  •  \(languageLabels)"
+            headerModel.summary = summaryLabel.stringValue
 
             updateFailureReport()
 
@@ -1910,6 +2008,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         summaryLabel.stringValue =
             "\(ready) READY  •  \(selected) selected  •  \(languageLabels)"
+        headerModel.summary = summaryLabel.stringValue
 
         updateFailureReport()
     }
@@ -2433,6 +2532,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
                         self.fanpagePopup.selectItem(at: index)
                     }
 
+                    self.headerModel.fanpageOptions = pages.map(\.menuTitle)
+                    self.headerModel.fanpageTitle = selectedPage.menuTitle
+
                     self.appendLog(
                         "✓ Facebook Pages: \(pages.count) page(s) loaded"
                     )
@@ -2467,6 +2569,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         let page = facebookPages[index]
         FacebookPageSelectionConfig.shared.selectedPage = page
+        headerModel.fanpageTitle = page.menuTitle
 
         appendLog(
             "Batch Fanpage: \(page.displayName) " +
@@ -2658,6 +2761,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         languagePopupButton.title =
             languagePopupTitle()
+        headerModel.languageTitle = languagePopupButton.title
 
         for language in CampaignLanguage.allCases {
             languageCheckButtons[language]?.state =
@@ -3069,6 +3173,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         let preset = presets[index]
         CreativeDisplayLinkConfig.shared.selected = preset
+        headerModel.displayLink = preset.displayName
         appendLog("Display link: \(preset.rawValue)")
     }
 
@@ -3479,6 +3584,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     }
 
     func setBusy(_ busy: Bool) {
+        headerModel.isBusy = busy
         [refreshButton, selectAllButton, selectNewButton, clearButton, testPipelineButton,
          createContentButton, createCreativeButton, createCampaignButton,
          settingsButton, selectFailedButton, refreshFailureReportButton].forEach {

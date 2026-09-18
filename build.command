@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.10.2 — Streamlined Campaign UI"
+echo "  Ethopex Workspace V1.11.0 — SwiftUI Campaign Surface"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""
@@ -69,6 +69,7 @@ xcrun --sdk macosx swiftc \
   CampaignEngine.swift \
   APISettingsWindow.swift \
   CampaignModule.swift \
+  CampaignSwiftUIHeader.swift \
   CombinedMain.swift \
   -o "$MACOS/EthopexWorkspace"
 
