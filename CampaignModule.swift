@@ -116,24 +116,22 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         let sidebar = NSView()
         let rightColumn = NSView()
         let header = NSView()
-        let overview = NSView()
         let tableScroll = NSScrollView()
         let bottom = NSView()
 
-        [sidebar, rightColumn, header, overview, tableScroll, bottom].forEach {
+        [sidebar, rightColumn, header, tableScroll, bottom].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
         }
 
         content.addSubview(sidebar)
         content.addSubview(rightColumn)
-        [header, overview, tableScroll].forEach {
+        [header, tableScroll].forEach {
             rightColumn.addSubview($0)
         }
         sidebar.addSubview(bottom)
 
         WorkspaceUI.styleSurface(sidebar, radius: 16)
         WorkspaceUI.styleSurface(header)
-        WorkspaceUI.styleSurface(overview)
         WorkspaceUI.styleScrollSurface(tableScroll)
         WorkspaceUI.styleSurface(bottom)
 
@@ -157,23 +155,17 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             header.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             header.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
             header.topAnchor.constraint(equalTo: rightColumn.topAnchor),
-            header.heightAnchor.constraint(equalToConstant: 252),
-
-            overview.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
-            overview.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
-            overview.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
-            overview.heightAnchor.constraint(equalToConstant: 100),
+            header.heightAnchor.constraint(equalToConstant: 238),
 
             tableScroll.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             tableScroll.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
-            tableScroll.topAnchor.constraint(equalTo: overview.bottomAnchor, constant: 8),
+            tableScroll.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
             tableScroll.bottomAnchor.constraint(equalTo: rightColumn.bottomAnchor),
             tableMinimum
         ])
 
         setupSidebar(sidebar, activity: bottom)
         setupModernHeader(header)
-        setupOverview(overview)
         setupTable(tableScroll)
         setupBottom(bottom)
     }
@@ -196,7 +188,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.4")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.5")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -432,7 +424,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.4")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.5")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -1976,6 +1968,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             summaryLabel.stringValue =
                 "\(ready) READY  •  \(selected) in current run  •  \(languageLabels)"
             headerModel.summary = summaryLabel.stringValue
+            syncHeaderMetrics(ready: ready)
 
             updateFailureReport()
 
@@ -2009,8 +2002,18 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         summaryLabel.stringValue =
             "\(ready) READY  •  \(selected) selected  •  \(languageLabels)"
         headerModel.summary = summaryLabel.stringValue
+        syncHeaderMetrics(ready: ready)
 
         updateFailureReport()
+    }
+
+    private func syncHeaderMetrics(ready: Int) {
+        headerModel.readyCount = "\(ready)"
+        headerModel.runTotal = metricTotalValue.stringValue
+        headerModel.selectedCount = metricSelectedValue.stringValue
+        headerModel.runningCount = metricRunningValue.stringValue
+        headerModel.createdCount = metricCampaignValue.stringValue
+        headerModel.failedCount = metricFailedValue.stringValue
     }
 
     private func resetAutoRunOverview(

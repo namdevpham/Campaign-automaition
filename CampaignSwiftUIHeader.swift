@@ -8,6 +8,12 @@ final class CampaignHeaderModel: ObservableObject {
     @Published var languageTitle = "Tất cả 5 ngôn ngữ"
     @Published var fanpageTitle = "Chưa chọn fanpage"
     @Published var fanpageOptions: [String] = []
+    @Published var readyCount = "0"
+    @Published var runTotal = "0"
+    @Published var selectedCount = "0"
+    @Published var runningCount = "0"
+    @Published var createdCount = "0"
+    @Published var failedCount = "0"
     @Published var isBusy = false
 }
 
@@ -35,7 +41,7 @@ struct CampaignSwiftUIHeader: View {
             topBar
             Divider()
                 .overlay(Color.white.opacity(0.08))
-                .padding(.top, 13)
+                .padding(.top, 8)
 
             HStack(alignment: .top, spacing: 12) {
                 dataCard
@@ -46,10 +52,11 @@ struct CampaignSwiftUIHeader: View {
                     .frame(maxHeight: .infinity, alignment: .topLeading)
                     .layoutPriority(1)
             }
-            .frame(height: 182, alignment: .topLeading)
-            .padding(.top, 12)
+            .frame(height: 174, alignment: .topLeading)
+            .padding(.top, 8)
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
         .background(Color(nsColor: WorkspaceUI.surface))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
@@ -64,21 +71,21 @@ struct CampaignSwiftUIHeader: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Campaign Automation")
-                    .font(.system(size: 25, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
                 Text("Chọn dữ liệu  •  Cấu hình  •  Tạo campaign")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundColor(.secondary)
             }
 
             Spacer(minLength: 12)
 
             Label("API CHECK ON ACTION", systemImage: "bolt.horizontal.circle.fill")
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .font(.system(size: 9, weight: .semibold, design: .rounded))
                 .foregroundColor(Color(nsColor: WorkspaceUI.cyan))
                 .padding(.horizontal, 11)
-                .padding(.vertical, 7)
+                .padding(.vertical, 6)
                 .background(Color(nsColor: WorkspaceUI.cyan).opacity(0.10))
                 .clipShape(Capsule())
         }
@@ -109,23 +116,21 @@ struct CampaignSwiftUIHeader: View {
                 compactButton("Bỏ chọn", icon: "xmark.circle", tint: .secondary, action: onClear)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 compactButton("Làm mới", icon: "arrow.clockwise", tint: .secondary, action: onRefresh)
-                Spacer(minLength: 0)
+                Text(model.summary)
+                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                    .foregroundColor(teal)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            statusStrip(
-                title: "BATCH STATUS",
-                value: model.summary,
-                icon: "checkmark.seal.fill",
-                tint: teal
-            )
-
-            readinessRow(
+            runMetricStrip(
                 items: [
-                    ("READY", "DATA", teal),
-                    ("MULTI-LANG", "5 LANG", purple),
-                    ("SELECT", "0", blue)
+                    ("READY", model.readyCount, teal),
+                    ("SELECTED", model.selectedCount, blue),
+                    ("LANG", model.languageTitle, purple)
                 ]
             )
         }
@@ -176,17 +181,18 @@ struct CampaignSwiftUIHeader: View {
             .buttonStyle(FilledCampaignButtonStyle(color: blue))
             .disabled(model.isBusy)
 
-            readinessRow(
+            runMetricStrip(
                 items: [
-                    ("DATA", "READY", teal),
-                    ("FANPAGE", model.fanpageTitle == "Chưa chọn fanpage" ? "CHƯA CHỌN" : "READY", purple),
-                    ("API", "ON ACTION", blue)
+                    ("RUN TOTAL", model.runTotal, blue),
+                    ("RUNNING", model.runningCount, Color(nsColor: .systemOrange)),
+                    ("CREATED", model.createdCount, Color(nsColor: .systemGreen)),
+                    ("FAILED", model.failedCount, Color(nsColor: .systemRed))
                 ]
             )
         }
     }
 
-    private func readinessRow(
+    private func runMetricStrip(
         items: [(String, String, Color)]
     ) -> some View {
         HStack(spacing: 6) {
@@ -194,7 +200,7 @@ struct CampaignSwiftUIHeader: View {
                 HStack(spacing: 5) {
                     Circle()
                         .fill(item.2)
-                        .frame(width: 5, height: 5)
+                        .frame(width: 4, height: 4)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(item.0)
                             .font(.system(size: 7, weight: .bold, design: .rounded))
@@ -208,7 +214,7 @@ struct CampaignSwiftUIHeader: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 7)
-                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 25, alignment: .leading)
                 .background(Color.white.opacity(0.045))
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .overlay(
@@ -217,40 +223,6 @@ struct CampaignSwiftUIHeader: View {
                 )
             }
         }
-    }
-
-    private func statusStrip(
-        title: String,
-        value: String,
-        icon: String,
-        tint: Color
-    ) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(tint)
-
-            Text(title)
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundColor(.secondary)
-
-            Spacer(minLength: 8)
-
-            Text(value)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .foregroundColor(tint)
-                .lineLimit(1)
-                .truncationMode(.tail)
-        }
-        .padding(.horizontal, 9)
-        .frame(height: 25)
-        .frame(maxWidth: .infinity)
-        .background(tint.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .stroke(tint.opacity(0.16), lineWidth: 0.6)
-        )
     }
 
     private func statusPill(_ title: String, tint: Color) -> some View {
