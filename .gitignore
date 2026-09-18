@@ -1,0 +1,11 @@
+build/
+.DS_Store
+*.xcuserstate
+DerivedData/
+xcuserdata/
+
+# Local/private configuration and data
+*.local
+*.secret
+*.key
+*.token
