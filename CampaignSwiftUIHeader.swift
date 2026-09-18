@@ -340,9 +340,9 @@ private struct DataSelectionButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .font(.system(size: 12.5, weight: .bold, design: .rounded))
             .foregroundColor(tint)
-            .padding(.horizontal, 7)
+            .padding(.horizontal, 4)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.white.opacity(configuration.isPressed ? 0.16 : 0.09))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
