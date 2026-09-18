@@ -1,0 +1,5 @@
+EN: HAR MATCH — Template_ETP_300_EN — ad_account 3727435 — external 1730366391509645 — locales None
+RU: HAR MATCH — Template_ETP_301_RU — ad_account 3727428 — external 1366664018402867 — locales [17]
+AR: HAR MATCH — Template_ETP_302_AR — ad_account 3727434 — external 1423878659586190 — locales [28]
+RO: HAR MATCH — Template_ETP_303_RO — ad_account 3727429 — external 1022535590782431 — locales [32]
+HR: HAR MATCH — Template_ETP_304_HR — ad_account 3727441 — external 1072505841928283 — locales [38]

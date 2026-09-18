@@ -1,0 +1,27 @@
+name: Build macOS app
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build app
+        env:
+          CI: "1"
+        run: bash ./build.command
+
+      - name: Package app
+        run: ditto -c -k --sequesterRsrc --keepParent "build/Ethopex Workspace.app" "Ethopex-Workspace-${{ github.sha }}.zip"
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ethopex-Workspace-macOS
+          path: Ethopex-Workspace-${{ github.sha }}.zip
