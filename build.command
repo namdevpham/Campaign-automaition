@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.11.6 — Restore Runtime Context"
+echo "  Ethopex Workspace V1.11.7 — Move Runtime Panel Left"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""

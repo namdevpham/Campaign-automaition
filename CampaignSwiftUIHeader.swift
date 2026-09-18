@@ -53,7 +53,7 @@ struct CampaignSwiftUIHeader: View {
                     .frame(maxHeight: .infinity, alignment: .topLeading)
                     .layoutPriority(1)
             }
-            .frame(height: 174, alignment: .topLeading)
+            .frame(height: 148, alignment: .topLeading)
             .padding(.top, 8)
         }
         .padding(.horizontal, 16)
@@ -164,48 +164,6 @@ struct CampaignSwiftUIHeader: View {
             }
             .buttonStyle(FilledCampaignButtonStyle(color: blue))
             .disabled(model.isBusy)
-
-            runMetricStrip(
-                items: [
-                    ("TIME", model.runTime, Color(nsColor: .systemOrange)),
-                    ("RUNNING", model.runningCount, Color(nsColor: .systemOrange)),
-                    ("CREATED", model.createdCount, Color(nsColor: .systemGreen)),
-                    ("FAILED", model.failedCount, Color(nsColor: .systemRed))
-                ]
-            )
-        }
-    }
-
-    private func runMetricStrip(
-        items: [(String, String, Color)]
-    ) -> some View {
-        HStack(spacing: 6) {
-            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(item.2)
-                        .frame(width: 4, height: 4)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(item.0)
-                            .font(.system(size: 7, weight: .bold, design: .rounded))
-                            .foregroundColor(.secondary)
-                        Text(item.1)
-                            .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                            .foregroundColor(item.2)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 7)
-                .frame(maxWidth: .infinity, minHeight: 25, alignment: .leading)
-                .background(Color.white.opacity(0.045))
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(item.2.opacity(0.16), lineWidth: 0.6)
-                )
-            }
         }
     }
 

@@ -155,7 +155,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             header.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             header.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
             header.topAnchor.constraint(equalTo: rightColumn.topAnchor),
-            header.heightAnchor.constraint(equalToConstant: 238),
+            header.heightAnchor.constraint(equalToConstant: 210),
 
             tableScroll.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             tableScroll.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
@@ -188,7 +188,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.6")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.7")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -424,7 +424,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.6")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.7")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -459,8 +459,58 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             symbol: "arrow.clockwise"
         )
 
+        let currentRunTitle = NSTextField(labelWithString: "CURRENT RUN")
+        currentRunTitle.font = .systemFont(ofSize: 10, weight: .bold)
+        currentRunTitle.textColor = .secondaryLabelColor
+        currentRunTitle.translatesAutoresizingMaskIntoConstraints = false
+
+        let timeCard = makeActivityMetricCard(
+            title: "TIME",
+            value: runTimeLabel,
+            tint: .systemOrange
+        )
+        let runningCard = makeActivityMetricCard(
+            title: "RUNNING",
+            value: metricRunningValue,
+            tint: .systemOrange
+        )
+        let createdCard = makeActivityMetricCard(
+            title: "CREATED",
+            value: metricCampaignValue,
+            tint: .systemGreen
+        )
+        let failedCard = makeActivityMetricCard(
+            title: "FAILED",
+            value: metricFailedValue,
+            tint: .systemRed
+        )
+
+        runTimeLabel.font = .monospacedSystemFont(ofSize: 10, weight: .bold)
+        metricRunningValue.font = .systemFont(ofSize: 16, weight: .bold)
+        metricCampaignValue.font = .systemFont(ofSize: 16, weight: .bold)
+        metricFailedValue.font = .systemFont(ofSize: 16, weight: .bold)
+
+        let runRowOne = NSStackView(views: [timeCard, runningCard])
+        runRowOne.orientation = .horizontal
+        runRowOne.distribution = .fillEqually
+        runRowOne.spacing = 6
+        runRowOne.translatesAutoresizingMaskIntoConstraints = false
+
+        let runRowTwo = NSStackView(views: [createdCard, failedCard])
+        runRowTwo.orientation = .horizontal
+        runRowTwo.distribution = .fillEqually
+        runRowTwo.spacing = 6
+        runRowTwo.translatesAutoresizingMaskIntoConstraints = false
+
+        let currentRunGrid = NSStackView(views: [runRowOne, runRowTwo])
+        currentRunGrid.orientation = .vertical
+        currentRunGrid.distribution = .fillEqually
+        currentRunGrid.spacing = 6
+        currentRunGrid.translatesAutoresizingMaskIntoConstraints = false
+
         [brandIcon, eyebrow, title, version, totalCard, realtimeCard,
-         selectFailedButton, refreshFailureReportButton].forEach {
+         selectFailedButton, refreshFailureReportButton, currentRunTitle,
+         currentRunGrid].forEach {
             sidebar.addSubview($0)
         }
 
@@ -494,9 +544,16 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             refreshFailureReportButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             refreshFailureReportButton.topAnchor.constraint(equalTo: selectFailedButton.bottomAnchor, constant: 6),
             refreshFailureReportButton.heightAnchor.constraint(equalToConstant: 28),
+            currentRunTitle.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 16),
+            currentRunTitle.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -14),
+            currentRunTitle.topAnchor.constraint(equalTo: refreshFailureReportButton.bottomAnchor, constant: 11),
+            currentRunGrid.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            currentRunGrid.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            currentRunGrid.topAnchor.constraint(equalTo: currentRunTitle.bottomAnchor, constant: 6),
+            currentRunGrid.heightAnchor.constraint(equalToConstant: 70),
             activity.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             activity.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
-            activity.topAnchor.constraint(equalTo: refreshFailureReportButton.bottomAnchor, constant: 10),
+            activity.topAnchor.constraint(equalTo: currentRunGrid.bottomAnchor, constant: 10),
             activity.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -12)
         ])
     }
@@ -577,6 +634,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         let previousDuration = UserDefaults.standard.double(
             forKey: "ethopex.lastMultilingualAutoDuration"
         )
+        runTimeLabel.stringValue = previousDuration > 0
+            ? "LAST " + formatRunDuration(previousDuration)
+            : "00:00:00"
         headerModel.runTime = previousDuration > 0
             ? "LAST " + formatRunDuration(previousDuration)
             : "TIME 00:00:00"
