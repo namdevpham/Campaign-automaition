@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.9.0 — Control Center Redesign"
+echo "  Ethopex Workspace V1.9.1 — Interactive Navigation"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""

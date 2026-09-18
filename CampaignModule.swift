@@ -1,6 +1,74 @@
 import AppKit
 import Foundation
 
+private final class SidebarActionView: NSView {
+    var onActivate: (() -> Void)?
+    private var trackingArea: NSTrackingArea?
+    private var isHovering = false {
+        didSet {
+            guard oldValue != isHovering else { return }
+            layer?.backgroundColor = backgroundColor.cgColor
+        }
+    }
+
+    private let normalBackground: NSColor
+    private let hoverBackground: NSColor
+
+    init(active: Bool) {
+        normalBackground = active
+            ? WorkspaceUI.cyan.withAlphaComponent(0.14)
+            : WorkspaceUI.raisedSurface
+        hoverBackground = active
+            ? WorkspaceUI.cyan.withAlphaComponent(0.20)
+            : WorkspaceUI.cyan.withAlphaComponent(0.10)
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 10
+        layer?.masksToBounds = true
+        layer?.borderWidth = 0.5
+        layer?.borderColor = active
+            ? WorkspaceUI.cyan.withAlphaComponent(0.42).cgColor
+            : WorkspaceUI.border.cgColor
+        setAccessibilityRole(.button)
+        layer?.backgroundColor = normalBackground.cgColor
+    }
+
+    required init?(coder: NSCoder) {
+        return nil
+    }
+
+    private var backgroundColor: NSColor {
+        isHovering ? hoverBackground : normalBackground
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovering = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovering = false
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onActivate?()
+    }
+}
+
 final class CampaignWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
     let dataSource = CampaignDataSource()
     let api = EthopexAPIClient()
@@ -71,6 +139,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     let settingsButton = NSButton()
 
     var apiSettingsController: APISettingsWindowController?
+    var onNavigateToCampaign: (() -> Void)?
+    var onNavigateToDataManager: (() -> Void)?
+    var onOpenAPIConnections: (() -> Void)?
     var filtered: [CampaignRecord] = []
     var selectedIDs = Set<UUID>()
     var statuses: [UUID: JobStatus] = [:]
@@ -177,20 +248,13 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         symbol: String,
         title: String,
         detail: String,
-        active: Bool = false
+        active: Bool = false,
+        action: (() -> Void)? = nil
     ) -> NSView {
-        let row = NSView()
+        let row = SidebarActionView(active: active)
+        row.onActivate = action
+        row.setAccessibilityLabel(title)
         row.translatesAutoresizingMaskIntoConstraints = false
-        row.wantsLayer = true
-        row.layer?.cornerRadius = 10
-        row.layer?.masksToBounds = true
-        row.layer?.backgroundColor = active
-            ? WorkspaceUI.cyan.withAlphaComponent(0.14).cgColor
-            : WorkspaceUI.raisedSurface.cgColor
-        row.layer?.borderWidth = 0.5
-        row.layer?.borderColor = active
-            ? WorkspaceUI.cyan.withAlphaComponent(0.42).cgColor
-            : WorkspaceUI.border.cgColor
 
         let icon = NSImageView()
         icon.image = NSImage(
@@ -231,47 +295,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         return row
     }
 
-    private func makeSidebarStage(
-        number: String,
-        title: String,
-        accent: NSColor
-    ) -> NSView {
-        let row = NSView()
-        row.translatesAutoresizingMaskIntoConstraints = false
-
-        let marker = NSTextField(labelWithString: number)
-        marker.font = .monospacedDigitSystemFont(ofSize: 10, weight: .bold)
-        marker.alignment = .center
-        marker.textColor = accent
-        marker.drawsBackground = true
-        marker.backgroundColor = accent.withAlphaComponent(0.12)
-        marker.wantsLayer = true
-        marker.layer?.cornerRadius = 6
-        marker.layer?.masksToBounds = true
-        marker.translatesAutoresizingMaskIntoConstraints = false
-
-        let label = NSTextField(labelWithString: title)
-        label.font = .systemFont(ofSize: 11, weight: .medium)
-        label.textColor = .secondaryLabelColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-
-        row.addSubview(marker)
-        row.addSubview(label)
-
-        NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: 26),
-            marker.leadingAnchor.constraint(equalTo: row.leadingAnchor),
-            marker.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            marker.widthAnchor.constraint(equalToConstant: 28),
-            marker.heightAnchor.constraint(equalToConstant: 22),
-            label.leadingAnchor.constraint(equalTo: marker.trailingAnchor, constant: 10),
-            label.centerYAnchor.constraint(equalTo: marker.centerYAnchor),
-            label.trailingAnchor.constraint(equalTo: row.trailingAnchor)
-        ])
-
-        return row
-    }
-
     private func setupSidebar(_ sidebar: NSView) {
         let brandIcon = NSImageView()
         brandIcon.image = NSImage(
@@ -290,7 +313,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "LOCAL RUNTIME  •  v1.9.0")
+        let version = NSTextField(labelWithString: "LOCAL RUNTIME  •  v1.9.1")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -305,17 +328,20 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
                 symbol: "square.grid.2x2",
                 title: "Campaign Console",
                 detail: "ACTIVE MODULE",
-                active: true
+                active: true,
+                action: { [weak self] in self?.onNavigateToCampaign?() }
             ),
             makeSidebarNavRow(
                 symbol: "tray.full",
                 title: "Data Manager",
-                detail: "SOURCE LIBRARY"
+                detail: "SOURCE LIBRARY",
+                action: { [weak self] in self?.onNavigateToDataManager?() }
             ),
             makeSidebarNavRow(
                 symbol: "key.horizontal",
                 title: "API Connections",
-                detail: "GEMINI + ETHOPEX"
+                detail: "GEMINI + ETHOPEX",
+                action: { [weak self] in self?.onOpenAPIConnections?() }
             )
         ])
         navStack.orientation = .vertical
@@ -323,24 +349,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         navStack.distribution = .fill
         navStack.spacing = 8
         navStack.translatesAutoresizingMaskIntoConstraints = false
-
-        let pipelineLabel = NSTextField(labelWithString: "AUTOMATION PIPELINE")
-        pipelineLabel.font = .systemFont(ofSize: 10, weight: .bold)
-        pipelineLabel.textColor = .tertiaryLabelColor
-        pipelineLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        let stageStack = NSStackView(views: [
-            makeSidebarStage(number: "01", title: "Source selection", accent: WorkspaceUI.cyan),
-            makeSidebarStage(number: "02", title: "Gemini generation", accent: WorkspaceUI.violet),
-            makeSidebarStage(number: "03", title: "QA validation", accent: .systemGreen),
-            makeSidebarStage(number: "04", title: "Content + creative", accent: .systemOrange),
-            makeSidebarStage(number: "05", title: "Campaign launch", accent: .systemBlue)
-        ])
-        stageStack.orientation = .vertical
-        stageStack.alignment = .leading
-        stageStack.distribution = .fill
-        stageStack.spacing = 2
-        stageStack.translatesAutoresizingMaskIntoConstraints = false
 
         let footer = NSView()
         footer.translatesAutoresizingMaskIntoConstraints = false
@@ -369,8 +377,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         sidebar.addSubview(version)
         sidebar.addSubview(workspaceLabel)
         sidebar.addSubview(navStack)
-        sidebar.addSubview(pipelineLabel)
-        sidebar.addSubview(stageStack)
         sidebar.addSubview(footer)
 
         NSLayoutConstraint.activate([
@@ -393,12 +399,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             navStack.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             navStack.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             navStack.topAnchor.constraint(equalTo: workspaceLabel.bottomAnchor, constant: 10),
-            pipelineLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            pipelineLabel.topAnchor.constraint(equalTo: navStack.bottomAnchor, constant: 24),
-            pipelineLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            stageStack.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            stageStack.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            stageStack.topAnchor.constraint(equalTo: pipelineLabel.bottomAnchor, constant: 10),
             footer.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             footer.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             footer.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -12),
