@@ -40,7 +40,10 @@ struct CampaignSwiftUIHeader: View {
             HStack(alignment: .top, spacing: 12) {
                 dataCard
                     .frame(width: 395)
+                    .frame(height: 182, alignment: .topLeading)
                 campaignCard
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 182, alignment: .topLeading)
                     .layoutPriority(1)
             }
             .padding(.top, 12)
@@ -121,8 +124,8 @@ struct CampaignSwiftUIHeader: View {
         controlCard(tint: purple) {
             HStack {
                 cardTitle("CAMPAIGN SETUP", tint: purple, icon: "slider.horizontal.3")
-                Spacer()
                 actionIconButton("API", icon: "gearshape", action: onAPI)
+                Spacer(minLength: 0)
             }
 
             HStack(spacing: 10) {
@@ -133,12 +136,11 @@ struct CampaignSwiftUIHeader: View {
                     tint: blue,
                     action: onDisplayLinkChanged
                 )
-                selectionMenu(
+                fieldButton(
                     title: "Languages",
                     value: model.languageTitle,
-                    options: [],
                     tint: purple,
-                    action: { _ in onLanguages() }
+                    action: onLanguages
                 )
             }
 
@@ -168,8 +170,8 @@ struct CampaignSwiftUIHeader: View {
         tint: Color,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10, content: content)
-            .padding(12)
+        VStack(alignment: .leading, spacing: 5, content: content)
+            .padding(8)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .background(Color(nsColor: WorkspaceUI.raisedSurface).opacity(0.74))
             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
@@ -219,39 +221,65 @@ struct CampaignSwiftUIHeader: View {
         tint: Color,
         action: @escaping (String) -> Void
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(title)
                 .font(.system(size: 9, weight: .semibold, design: .rounded))
                 .foregroundColor(.secondary)
 
             Menu {
-                if options.isEmpty {
-                    Button(value, action: {})
-                } else {
-                    ForEach(options, id: \.self) { option in
-                        Button(option) { action(option) }
-                    }
+                ForEach(options, id: \.self) { option in
+                    Button(option) { action(option) }
                 }
             } label: {
-                HStack(spacing: 6) {
-                    Text(value)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    Spacer(minLength: 0)
-                }
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundColor(.primary)
-                .padding(.horizontal, 9)
-                .frame(height: 30)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.black.opacity(0.18))
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                fieldSurface(value: value, tint: tint)
             }
             .menuStyle(.borderlessButton)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity)
         .tint(tint)
+    }
+
+    private func fieldButton(
+        title: String,
+        value: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(title)
+                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                .foregroundColor(.secondary)
+
+            Button(action: action) {
+                fieldSurface(value: value, tint: tint)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func fieldSurface(value: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Text(value)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(tint)
+        }
+        .font(.system(size: 11, weight: .medium, design: .rounded))
+        .foregroundColor(.primary)
+                .padding(.horizontal, 9)
+                .frame(height: 22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.black.opacity(0.28))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(tint.opacity(0.20), lineWidth: 0.6)
+        )
     }
 }
 
@@ -278,7 +306,7 @@ private struct FilledCampaignButtonStyle: ButtonStyle {
             .font(.system(size: 11, weight: .bold, design: .rounded))
             .foregroundColor(.white)
             .padding(.horizontal, 10)
-            .frame(height: 32)
+            .frame(height: 28)
             .background(color.opacity(configuration.isPressed ? 0.72 : 0.96))
             .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.99 : 1)

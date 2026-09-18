@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.11.2 — Campaign Layout Balance"
+echo "  Ethopex Workspace V1.11.3 — Equal Campaign Cards"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""
