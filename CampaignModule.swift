@@ -155,7 +155,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             header.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             header.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
             header.topAnchor.constraint(equalTo: rightColumn.topAnchor),
-            header.heightAnchor.constraint(equalToConstant: 300),
+            header.heightAnchor.constraint(equalToConstant: 252),
 
             overview.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             overview.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
@@ -194,7 +194,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.1")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.2")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -430,7 +430,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.1")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.2")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -561,7 +561,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         let subtitle =
             NSTextField(
                 labelWithString:
-                    "Automation pipeline  •  Live monitoring  •  Language-aware campaign routing"
+                    "Chọn dữ liệu  •  Cấu hình  •  Tạo campaign"
             )
         subtitle.font =
             .systemFont(
@@ -613,9 +613,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         let dataPanel = NSView()
         let campaignPanel = NSView()
-        let pipelinePanel = NSView()
 
-        [dataPanel, campaignPanel, pipelinePanel].forEach {
+
+        [dataPanel, campaignPanel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             $0.setContentHuggingPriority(
                 .defaultLow,
@@ -635,14 +635,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             campaignPanel,
             tint: .systemPurple
         )
-        WorkspaceUI.styleTintedSurface(
-            pipelinePanel,
-            tint: .systemBlue
-        )
-
         panelStack.addArrangedSubview(dataPanel)
         panelStack.addArrangedSubview(campaignPanel)
-        panelStack.addArrangedSubview(pipelinePanel)
 
         let dataTitle =
             NSTextField(
@@ -668,18 +662,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         campaignTitle.textColor = .systemPurple
         campaignTitle.translatesAutoresizingMaskIntoConstraints = false
 
-        let pipelineTitle =
-            NSTextField(
-                labelWithString: "PIPELINE FLOW"
-            )
-        pipelineTitle.font =
-            .systemFont(
-                ofSize: 11,
-                weight: .bold
-            )
-        pipelineTitle.textColor = .systemBlue
-        pipelineTitle.translatesAutoresizingMaskIntoConstraints = false
-
         searchField.placeholderString =
             "Tìm theo tên hoặc headline"
         searchField.delegate = self
@@ -704,18 +686,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         clearButton.title = "Bỏ chọn"
         clearButton.target = self
         clearButton.action = #selector(clearSelection)
-
-        testPipelineButton.title = "1  Test Pipeline"
-        testPipelineButton.target = self
-        testPipelineButton.action = #selector(runTestPipeline)
-
-        createContentButton.title = "2  Content"
-        createContentButton.target = self
-        createContentButton.action = #selector(createContentReal)
-
-        createCreativeButton.title = "3  Creative"
-        createCreativeButton.target = self
-        createCreativeButton.action = #selector(createCreativeReal)
 
         createCampaignButton.title = "4  TẠO CAMPAIGN AUTO"
         createCampaignButton.target = self
@@ -842,21 +812,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         )
 
         WorkspaceUI.styleAccentButton(
-            testPipelineButton,
-            tint: .systemOrange,
-            symbol: "wrench.and.screwdriver"
-        )
-        WorkspaceUI.styleAccentButton(
-            createContentButton,
-            tint: .systemBlue,
-            symbol: "doc.text"
-        )
-        WorkspaceUI.styleAccentButton(
-            createCreativeButton,
-            tint: .systemPurple,
-            symbol: "photo"
-        )
-        WorkspaceUI.styleAccentButton(
             createCampaignButton,
             tint: .systemBlue,
             symbol: "paperplane.fill",
@@ -888,33 +843,11 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         )
         summaryLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let flowHint =
-            NSTextField(
-                wrappingLabelWithString:
-                    "Source → Gemini → QA → Content → Image → Creative → Campaign"
-            )
-        flowHint.font =
-            .systemFont(
-                ofSize: 10,
-                weight: .medium
-            )
-        flowHint.textColor = .secondaryLabelColor
-        flowHint.alignment = .center
-        flowHint.maximumNumberOfLines = 2
-        flowHint.setContentCompressionResistancePriority(
-            .defaultLow,
-            for: .horizontal
-        )
-        flowHint.translatesAutoresizingMaskIntoConstraints = false
-
         [
             refreshButton,
             selectAllButton,
             selectNewButton,
             clearButton,
-            testPipelineButton,
-            createContentButton,
-            createCreativeButton,
             createCampaignButton,
             refreshPagesButton,
             settingsButton
@@ -973,13 +906,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         campaignPanel.addSubview(fanpagePopup)
         campaignPanel.addSubview(refreshPagesButton)
         campaignPanel.addSubview(createCampaignButton)
-
-        // PIPELINE PANEL
-        pipelinePanel.addSubview(pipelineTitle)
-        pipelinePanel.addSubview(testPipelineButton)
-        pipelinePanel.addSubview(createContentButton)
-        pipelinePanel.addSubview(createCreativeButton)
-        pipelinePanel.addSubview(flowHint)
 
         NSLayoutConstraint.activate([
             // Header title row
@@ -1217,75 +1143,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
                 constant: -12
             ),
 
-            // PIPELINE PANEL
-            pipelineTitle.leadingAnchor.constraint(
-                equalTo: pipelinePanel.leadingAnchor,
-                constant: 14
-            ),
-            pipelineTitle.topAnchor.constraint(
-                equalTo: pipelinePanel.topAnchor,
-                constant: 12
-            ),
-            pipelineTitle.trailingAnchor.constraint(
-                lessThanOrEqualTo: pipelinePanel.trailingAnchor,
-                constant: -14
-            ),
-
-            testPipelineButton.leadingAnchor.constraint(
-                equalTo: pipelinePanel.leadingAnchor,
-                constant: 14
-            ),
-            testPipelineButton.trailingAnchor.constraint(
-                equalTo: pipelinePanel.trailingAnchor,
-                constant: -14
-            ),
-            testPipelineButton.topAnchor.constraint(
-                equalTo: pipelineTitle.bottomAnchor,
-                constant: 11
-            ),
-
-            createContentButton.leadingAnchor.constraint(
-                equalTo: pipelinePanel.leadingAnchor,
-                constant: 14
-            ),
-            createContentButton.trailingAnchor.constraint(
-                equalTo: pipelinePanel.trailingAnchor,
-                constant: -14
-            ),
-            createContentButton.topAnchor.constraint(
-                equalTo: testPipelineButton.bottomAnchor,
-                constant: 10
-            ),
-
-            createCreativeButton.leadingAnchor.constraint(
-                equalTo: pipelinePanel.leadingAnchor,
-                constant: 14
-            ),
-            createCreativeButton.trailingAnchor.constraint(
-                equalTo: pipelinePanel.trailingAnchor,
-                constant: -14
-            ),
-            createCreativeButton.topAnchor.constraint(
-                equalTo: createContentButton.bottomAnchor,
-                constant: 10
-            ),
-
-            flowHint.leadingAnchor.constraint(
-                equalTo: pipelinePanel.leadingAnchor,
-                constant: 14
-            ),
-            flowHint.trailingAnchor.constraint(
-                equalTo: pipelinePanel.trailingAnchor,
-                constant: -14
-            ),
-            flowHint.topAnchor.constraint(
-                equalTo: createCreativeButton.bottomAnchor,
-                constant: 13
-            ),
-            flowHint.bottomAnchor.constraint(
-                lessThanOrEqualTo: pipelinePanel.bottomAnchor,
-                constant: -10
-            )
         ])
 
         DispatchQueue.main.async { [weak self, weak campaignPanel] in
