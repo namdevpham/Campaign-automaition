@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.11.5 — Compact Run Workspace"
+echo "  Ethopex Workspace V1.11.6 — Restore Runtime Context"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""

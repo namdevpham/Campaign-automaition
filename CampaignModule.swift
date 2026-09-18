@@ -188,7 +188,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.5")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.6")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -424,7 +424,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.5")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.6")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -574,6 +574,12 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         headerModel.fanpageTitle =
             FacebookPageSelectionConfig.shared.selectedPage.menuTitle
         headerModel.summary = summaryLabel.stringValue
+        let previousDuration = UserDefaults.standard.double(
+            forKey: "ethopex.lastMultilingualAutoDuration"
+        )
+        headerModel.runTime = previousDuration > 0
+            ? "LAST " + formatRunDuration(previousDuration)
+            : "TIME 00:00:00"
 
         let hosting = NSHostingView(
             rootView: CampaignSwiftUIHeader(
@@ -3270,6 +3276,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         autoRunPreparedVariantCount = 0
 
         runTimeLabel.stringValue = "RUN 00:00:00"
+        headerModel.runTime = runTimeLabel.stringValue
         WorkspaceUI.styleBadge(
             runTimeLabel,
             textColor: .systemOrange,
@@ -3317,6 +3324,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         let elapsed = Date().timeIntervalSince(startedAt)
         runTimeLabel.stringValue =
             "RUN " + formatRunDuration(elapsed)
+        headerModel.runTime = runTimeLabel.stringValue
     }
 
     private func finishMultilingualRunTimer(
@@ -3337,6 +3345,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         runTimeLabel.stringValue =
             "\(outcome) \(formatted)"
+        headerModel.runTime = runTimeLabel.stringValue
 
         WorkspaceUI.styleBadge(
             runTimeLabel,

@@ -14,6 +14,7 @@ final class CampaignHeaderModel: ObservableObject {
     @Published var runningCount = "0"
     @Published var createdCount = "0"
     @Published var failedCount = "0"
+    @Published var runTime = "TIME 00:00:00"
     @Published var isBusy = false
 }
 
@@ -114,25 +115,8 @@ struct CampaignSwiftUIHeader: View {
                 compactButton("Chọn tất cả", icon: "checkmark.circle", tint: teal, action: onSelectAll)
                 compactButton("DATA mới", icon: "sparkles", tint: purple, action: onSelectNew)
                 compactButton("Bỏ chọn", icon: "xmark.circle", tint: .secondary, action: onClear)
-            }
-
-            HStack(spacing: 8) {
                 compactButton("Làm mới", icon: "arrow.clockwise", tint: .secondary, action: onRefresh)
-                Text(model.summary)
-                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                    .foregroundColor(teal)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            runMetricStrip(
-                items: [
-                    ("READY", model.readyCount, teal),
-                    ("SELECTED", model.selectedCount, blue),
-                    ("LANG", model.languageTitle, purple)
-                ]
-            )
         }
     }
 
@@ -183,7 +167,7 @@ struct CampaignSwiftUIHeader: View {
 
             runMetricStrip(
                 items: [
-                    ("RUN TOTAL", model.runTotal, blue),
+                    ("TIME", model.runTime, Color(nsColor: .systemOrange)),
                     ("RUNNING", model.runningCount, Color(nsColor: .systemOrange)),
                     ("CREATED", model.createdCount, Color(nsColor: .systemGreen)),
                     ("FAILED", model.failedCount, Color(nsColor: .systemRed))
