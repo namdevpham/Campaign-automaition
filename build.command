@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.7.4 — Batched Landing Repair"
+echo "  Ethopex Workspace V1.8.0 — Futuristic Operations Console"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""

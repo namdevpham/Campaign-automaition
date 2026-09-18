@@ -37,6 +37,44 @@ final class WorkspaceVerticallyCenteredTextFieldCell: NSTextFieldCell {
 enum WorkspaceUI {
     static let cornerRadius: CGFloat = 12
 
+    // Future-console palette. Keep the workflow logic untouched while giving
+    // every module the same visual language: deep graphite surfaces, soft
+    // borders and bright operational accents.
+    static let canvas = NSColor(
+        calibratedRed: 0.035,
+        green: 0.047,
+        blue: 0.075,
+        alpha: 1
+    )
+    static let surface = NSColor(
+        calibratedRed: 0.075,
+        green: 0.090,
+        blue: 0.135,
+        alpha: 1
+    )
+    static let raisedSurface = NSColor(
+        calibratedRed: 0.105,
+        green: 0.125,
+        blue: 0.180,
+        alpha: 1
+    )
+    static let border = NSColor(
+        calibratedWhite: 1,
+        alpha: 0.10
+    )
+    static let cyan = NSColor(
+        calibratedRed: 0.22,
+        green: 0.86,
+        blue: 0.96,
+        alpha: 1
+    )
+    static let violet = NSColor(
+        calibratedRed: 0.68,
+        green: 0.45,
+        blue: 1.0,
+        alpha: 1
+    )
+
     static func styleSurface(
         _ view: NSView,
         radius: CGFloat = cornerRadius
@@ -44,11 +82,9 @@ enum WorkspaceUI {
         view.wantsLayer = true
         view.layer?.cornerRadius = radius
         view.layer?.masksToBounds = true
-        view.layer?.backgroundColor =
-            NSColor.controlBackgroundColor.cgColor
+        view.layer?.backgroundColor = surface.cgColor
         view.layer?.borderWidth = 0.5
-        view.layer?.borderColor =
-            NSColor.separatorColor.withAlphaComponent(0.65).cgColor
+        view.layer?.borderColor = border.cgColor
     }
 
     static func stylePrimaryButton(
@@ -122,10 +158,15 @@ enum WorkspaceUI {
         view.layer?.cornerRadius = radius
         view.layer?.masksToBounds = true
         view.layer?.backgroundColor =
-            tint.withAlphaComponent(0.055).cgColor
+            NSColor(
+                calibratedRed: 0.09,
+                green: 0.105,
+                blue: 0.155,
+                alpha: 1
+            ).cgColor
         view.layer?.borderWidth = 0.7
         view.layer?.borderColor =
-            tint.withAlphaComponent(0.22).cgColor
+            tint.withAlphaComponent(0.34).cgColor
     }
 
     static func styleDangerButton(
@@ -142,7 +183,7 @@ enum WorkspaceUI {
     ) {
         scroll.borderType = .noBorder
         scroll.drawsBackground = true
-        scroll.backgroundColor = .controlBackgroundColor
+        scroll.backgroundColor = canvas
         styleSurface(scroll, radius: radius)
     }
 
@@ -209,7 +250,7 @@ final class CombinedWindowController: NSWindowController {
     )
 
     private let titleLabel = NSTextField(labelWithString: "Ethopex Workspace")
-    private let subtitleLabel = NSTextField(labelWithString: "Operations Workspace  •  Data + Campaign Monitoring  •  v1.7.4")
+    private let subtitleLabel = NSTextField(labelWithString: "Operations Workspace  •  Data + Campaign Monitoring  •  v1.8.0")
     private let container = NSView()
     private let loadingLabel = NSTextField(labelWithString: "Đang tải...")
     private let updateVersionButton = NSButton()
@@ -294,6 +335,10 @@ final class CombinedWindowController: NSWindowController {
         )
 
         window.title = "Ethopex Workspace"
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
         window.minSize =
             NSSize(
                 width: minWidth,
@@ -317,14 +362,14 @@ final class CombinedWindowController: NSWindowController {
 
         root.wantsLayer = true
         root.layer?.backgroundColor =
-            NSColor.underPageBackgroundColor.cgColor
+            WorkspaceUI.canvas.cgColor
 
         container.wantsLayer = true
 
         let header = NSView()
         header.wantsLayer = true
         header.layer?.backgroundColor =
-            NSColor.windowBackgroundColor.cgColor
+            WorkspaceUI.surface.cgColor
         header.translatesAutoresizingMaskIntoConstraints = false
         container.translatesAutoresizingMaskIntoConstraints = false
 

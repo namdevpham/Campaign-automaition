@@ -85,6 +85,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             defer: false
         )
         window.title = "Ethopex Campaign Tool"
+        window.appearance = NSAppearance(named: .darkAqua)
         window.minSize = NSSize(width: 1240, height: 760)
         window.center()
         self.init(window: window)
@@ -936,10 +937,15 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         card.layer?.cornerRadius = 10
         card.layer?.masksToBounds = true
         card.layer?.backgroundColor =
-            tint.withAlphaComponent(0.055).cgColor
+            NSColor(
+                calibratedRed: 0.095,
+                green: 0.115,
+                blue: 0.170,
+                alpha: 1
+            ).cgColor
         card.layer?.borderWidth = 0.5
         card.layer?.borderColor =
-            tint.withAlphaComponent(0.22).cgColor
+            tint.withAlphaComponent(0.30).cgColor
 
         let icon = NSImageView()
         icon.image = NSImage(
@@ -1371,12 +1377,12 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
                 width: 0,
                 height: 1
             )
-        tableView.backgroundColor = .controlBackgroundColor
+        tableView.backgroundColor = WorkspaceUI.canvas
 
         if let headerView = tableView.headerView {
             headerView.wantsLayer = true
             headerView.layer?.backgroundColor =
-                NSColor.controlBackgroundColor.cgColor
+                WorkspaceUI.raisedSurface.cgColor
         }
         tableView.selectionHighlightStyle = .regular
         tableView.allowsEmptySelection = true
@@ -1403,8 +1409,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         logView.isEditable = false
         logView.drawsBackground = true
-        logView.backgroundColor = .textBackgroundColor
-        logView.textColor = .textColor
+        logView.backgroundColor = WorkspaceUI.canvas
+        logView.textColor = .labelColor
         logView.textContainerInset = NSSize(width: 10, height: 6)
         logView.font = .monospacedSystemFont(ofSize: 10.5, weight: .regular)
         logView.string = "V1.4 sẵn sàng. Fanpage batch + Auto Cover quiz 3.\n"

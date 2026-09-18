@@ -3,6 +3,14 @@ import AppKit
 import Foundation
 import UniformTypeIdentifiers
 
+final class WorkspaceDarkPanelView: NSView {
+    override func draw(_ dirtyRect: NSRect) {
+        WorkspaceUI.surface.setFill()
+        dirtyRect.fill()
+        super.draw(dirtyRect)
+    }
+}
+
 final class DataStore {
     var records: [CampaignRecord] = []
     let baseDirectory: URL
@@ -344,6 +352,7 @@ final class DataManagerWindowController: NSWindowController, NSTableViewDataSour
         )
 
         window.title = "Ethopex Data Manager"
+        window.appearance = NSAppearance(named: .darkAqua)
         window.minSize =
             NSSize(
                 width: 780,
@@ -361,11 +370,14 @@ final class DataManagerWindowController: NSWindowController, NSTableViewDataSour
 
         content.wantsLayer = true
         content.layer?.backgroundColor =
-            NSColor.underPageBackgroundColor.cgColor
+            WorkspaceUI.canvas.cgColor
 
         let split = dataSplitView
         split.isVertical = true
         split.dividerStyle = .thin
+        split.appearance = NSAppearance(named: .darkAqua)
+        split.wantsLayer = true
+        split.layer?.backgroundColor = WorkspaceUI.surface.cgColor
         split.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(split)
 
@@ -376,7 +388,8 @@ final class DataManagerWindowController: NSWindowController, NSTableViewDataSour
             split.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -12)
         ])
 
-        let left = NSView()
+        let left = WorkspaceDarkPanelView()
+        left.appearance = NSAppearance(named: .darkAqua)
         left.translatesAutoresizingMaskIntoConstraints = false
 
         let rightScroll = NSScrollView()
@@ -386,10 +399,14 @@ final class DataManagerWindowController: NSWindowController, NSTableViewDataSour
         rightScroll.autohidesScrollers = true
         rightScroll.borderType = .noBorder
         rightScroll.drawsBackground = true
-        rightScroll.backgroundColor = .controlBackgroundColor
+        rightScroll.backgroundColor = WorkspaceUI.canvas
+        rightScroll.contentView.drawsBackground = true
+        rightScroll.contentView.backgroundColor = WorkspaceUI.surface
+        rightScroll.scrollerStyle = .overlay
         rightScroll.translatesAutoresizingMaskIntoConstraints = false
 
-        let right = NSView()
+        let right = WorkspaceDarkPanelView()
+        right.appearance = NSAppearance(named: .darkAqua)
         right.translatesAutoresizingMaskIntoConstraints = false
         rightScroll.documentView = right
 
@@ -446,9 +463,9 @@ final class DataManagerWindowController: NSWindowController, NSTableViewDataSour
         left.wantsLayer = true
         right.wantsLayer = true
         left.layer?.backgroundColor =
-            NSColor.controlBackgroundColor.cgColor
+            WorkspaceUI.surface.cgColor
         right.layer?.backgroundColor =
-            NSColor.controlBackgroundColor.cgColor
+            WorkspaceUI.surface.cgColor
 
         split.setHoldingPriority(
             .defaultLow,
@@ -541,7 +558,7 @@ final class DataManagerWindowController: NSWindowController, NSTableViewDataSour
         tableView.rowHeight = 46
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.intercellSpacing = NSSize(width: 0, height: 1)
-        tableView.backgroundColor = .controlBackgroundColor
+        tableView.backgroundColor = WorkspaceUI.canvas
         tableView.allowsMultipleSelection = false
         tableView.allowsColumnReordering = false
         tableView.columnAutoresizingStyle = .noColumnAutoresizing
@@ -658,10 +675,10 @@ final class DataManagerWindowController: NSWindowController, NSTableViewDataSour
         imageView.wantsLayer = true
         imageView.layer?.cornerRadius = 12
         imageView.layer?.backgroundColor =
-            NSColor.textBackgroundColor.cgColor
+            WorkspaceUI.raisedSurface.cgColor
         imageView.layer?.borderWidth = 0.5
         imageView.layer?.borderColor =
-            NSColor.separatorColor.withAlphaComponent(0.7).cgColor
+            WorkspaceUI.border.cgColor
         imageView.translatesAutoresizingMaskIntoConstraints = false
 
         primaryTextView.isEditable = false
@@ -1656,7 +1673,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         let imageRow = NSView()
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.wantsLayer = true
-        imageView.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        imageView.layer?.backgroundColor = WorkspaceUI.raisedSurface.cgColor
         imageView.layer?.cornerRadius = 8
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageLabel.translatesAutoresizingMaskIntoConstraints = false
