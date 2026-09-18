@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.11.8 — Fix Language Anchor and Pages Flow"
+echo "  Ethopex Workspace V1.11.9 — Expand Data Selection Controls"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""

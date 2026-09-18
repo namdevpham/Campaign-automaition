@@ -112,12 +112,13 @@ struct CampaignSwiftUIHeader: View {
             .background(Color.black.opacity(0.20))
             .clipShape(Capsule())
 
-            HStack(spacing: 7) {
-                compactButton("Chọn tất cả", icon: "checkmark.circle", tint: teal, action: onSelectAll)
+            HStack(spacing: 6) {
+                compactButton("Tất cả", icon: "checkmark.circle", tint: teal, action: onSelectAll)
                 compactButton("DATA mới", icon: "sparkles", tint: purple, action: onSelectNew)
                 compactButton("Bỏ chọn", icon: "xmark.circle", tint: .secondary, action: onClear)
                 compactButton("Làm mới", icon: "arrow.clockwise", tint: .secondary, action: onRefresh)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -208,8 +209,10 @@ struct CampaignSwiftUIHeader: View {
         Button(action: action) {
             Label(title, systemImage: icon)
                 .lineLimit(1)
+                .minimumScaleFactor(0.72)
         }
         .buttonStyle(CompactCampaignButtonStyle(tint: tint))
+        .frame(maxWidth: .infinity)
         .disabled(model.isBusy)
     }
 
@@ -322,10 +325,10 @@ private struct CompactCampaignButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .font(.system(size: 9.5, weight: .semibold, design: .rounded))
             .foregroundColor(tint)
             .padding(.horizontal, 9)
-            .frame(height: 27)
+            .frame(maxWidth: .infinity, minHeight: 30)
             .background(Color.white.opacity(configuration.isPressed ? 0.14 : 0.08))
             .clipShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
