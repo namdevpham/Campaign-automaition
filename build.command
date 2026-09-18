@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.11.9 — Expand Data Selection Controls"
+echo "  Ethopex Workspace V1.11.10 — Fix Data Card Button Layout"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""

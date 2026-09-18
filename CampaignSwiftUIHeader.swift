@@ -118,7 +118,7 @@ struct CampaignSwiftUIHeader: View {
                 compactButton("Bỏ chọn", icon: "xmark.circle", tint: .secondary, action: onClear)
                 compactButton("Làm mới", icon: "arrow.clockwise", tint: .secondary, action: onRefresh)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -211,8 +211,8 @@ struct CampaignSwiftUIHeader: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
-        .buttonStyle(CompactCampaignButtonStyle(tint: tint))
-        .frame(maxWidth: .infinity)
+        .buttonStyle(DataSelectionButtonStyle(tint: tint))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .disabled(model.isBusy)
     }
 
@@ -325,12 +325,31 @@ private struct CompactCampaignButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
             .foregroundColor(tint)
             .padding(.horizontal, 9)
-            .frame(maxWidth: .infinity, minHeight: 30)
+            .frame(height: 27)
             .background(Color.white.opacity(configuration.isPressed ? 0.14 : 0.08))
             .clipShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+    }
+}
+
+private struct DataSelectionButtonStyle: ButtonStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundColor(tint)
+            .padding(.horizontal, 7)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.white.opacity(configuration.isPressed ? 0.16 : 0.09))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(tint.opacity(0.16), lineWidth: 0.6)
+            )
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
