@@ -40,12 +40,13 @@ struct CampaignSwiftUIHeader: View {
             HStack(alignment: .top, spacing: 12) {
                 dataCard
                     .frame(width: 395)
-                    .frame(height: 182, alignment: .topLeading)
+                    .frame(maxHeight: .infinity, alignment: .topLeading)
                 campaignCard
                     .frame(maxWidth: .infinity)
-                    .frame(height: 182, alignment: .topLeading)
+                    .frame(maxHeight: .infinity, alignment: .topLeading)
                     .layoutPriority(1)
             }
+            .frame(height: 182, alignment: .topLeading)
             .padding(.top, 12)
         }
         .padding(16)
@@ -110,13 +111,23 @@ struct CampaignSwiftUIHeader: View {
 
             HStack(spacing: 10) {
                 compactButton("Làm mới", icon: "arrow.clockwise", tint: .secondary, action: onRefresh)
-                Text(model.summary)
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundColor(teal)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
                 Spacer(minLength: 0)
             }
+
+            statusStrip(
+                title: "BATCH STATUS",
+                value: model.summary,
+                icon: "checkmark.seal.fill",
+                tint: teal
+            )
+
+            readinessRow(
+                items: [
+                    ("READY", "DATA", teal),
+                    ("MULTI-LANG", "5 LANG", purple),
+                    ("SELECT", "0", blue)
+                ]
+            )
         }
     }
 
@@ -124,6 +135,7 @@ struct CampaignSwiftUIHeader: View {
         controlCard(tint: purple) {
             HStack {
                 cardTitle("CAMPAIGN SETUP", tint: purple, icon: "slider.horizontal.3")
+                statusPill("AUTO MODE • READY", tint: purple)
                 actionIconButton("API", icon: "gearshape", action: onAPI)
                 Spacer(minLength: 0)
             }
@@ -163,7 +175,92 @@ struct CampaignSwiftUIHeader: View {
             }
             .buttonStyle(FilledCampaignButtonStyle(color: blue))
             .disabled(model.isBusy)
+
+            readinessRow(
+                items: [
+                    ("DATA", "READY", teal),
+                    ("FANPAGE", model.fanpageTitle == "Chưa chọn fanpage" ? "CHƯA CHỌN" : "READY", purple),
+                    ("API", "ON ACTION", blue)
+                ]
+            )
         }
+    }
+
+    private func readinessRow(
+        items: [(String, String, Color)]
+    ) -> some View {
+        HStack(spacing: 6) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(item.2)
+                        .frame(width: 5, height: 5)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.0)
+                            .font(.system(size: 7, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                        Text(item.1)
+                            .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                            .foregroundColor(item.2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 7)
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                .background(Color.white.opacity(0.045))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(item.2.opacity(0.16), lineWidth: 0.6)
+                )
+            }
+        }
+    }
+
+    private func statusStrip(
+        title: String,
+        value: String,
+        icon: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(tint)
+
+            Text(title)
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundColor(.secondary)
+
+            Spacer(minLength: 8)
+
+            Text(value)
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundColor(tint)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 25)
+        .frame(maxWidth: .infinity)
+        .background(tint.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(tint.opacity(0.16), lineWidth: 0.6)
+        )
+    }
+
+    private func statusPill(_ title: String, tint: Color) -> some View {
+        Text(title)
+            .font(.system(size: 8, weight: .bold, design: .rounded))
+            .foregroundColor(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.10))
+            .clipShape(Capsule())
     }
 
     private func controlCard<Content: View>(
@@ -172,7 +269,7 @@ struct CampaignSwiftUIHeader: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 5, content: content)
             .padding(8)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color(nsColor: WorkspaceUI.raisedSurface).opacity(0.74))
             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .overlay(
