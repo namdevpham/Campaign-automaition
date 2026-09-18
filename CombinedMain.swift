@@ -250,7 +250,7 @@ final class CombinedWindowController: NSWindowController {
     )
 
     private let titleLabel = NSTextField(labelWithString: "Ethopex Workspace")
-    private let subtitleLabel = NSTextField(labelWithString: "Operations Workspace  •  Data + Campaign Monitoring  •  v1.9.1")
+    private let subtitleLabel = NSTextField(labelWithString: "Operations Workspace  •  Data + Campaign Monitoring  •  v1.9.2")
     private let container = NSView()
     private let loadingLabel = NSTextField(labelWithString: "Đang tải...")
     private let updateVersionButton = NSButton()
@@ -783,15 +783,6 @@ final class CombinedWindowController: NSWindowController {
         }
 
         let controller = CampaignWindowController()
-        controller.onNavigateToCampaign = { [weak self] in
-            self?.showMode(index: 1)
-        }
-        controller.onNavigateToDataManager = { [weak self] in
-            self?.showMode(index: 0)
-        }
-        controller.onOpenAPIConnections = { [weak controller] in
-            controller?.openAPISettings()
-        }
         let view = detachContentView(from: controller)
 
         attachOnce(view)

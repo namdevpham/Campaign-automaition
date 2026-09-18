@@ -1,74 +1,6 @@
 import AppKit
 import Foundation
 
-private final class SidebarActionView: NSView {
-    var onActivate: (() -> Void)?
-    private var trackingArea: NSTrackingArea?
-    private var isHovering = false {
-        didSet {
-            guard oldValue != isHovering else { return }
-            layer?.backgroundColor = backgroundColor.cgColor
-        }
-    }
-
-    private let normalBackground: NSColor
-    private let hoverBackground: NSColor
-
-    init(active: Bool) {
-        normalBackground = active
-            ? WorkspaceUI.cyan.withAlphaComponent(0.14)
-            : WorkspaceUI.raisedSurface
-        hoverBackground = active
-            ? WorkspaceUI.cyan.withAlphaComponent(0.20)
-            : WorkspaceUI.cyan.withAlphaComponent(0.10)
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.cornerRadius = 10
-        layer?.masksToBounds = true
-        layer?.borderWidth = 0.5
-        layer?.borderColor = active
-            ? WorkspaceUI.cyan.withAlphaComponent(0.42).cgColor
-            : WorkspaceUI.border.cgColor
-        setAccessibilityRole(.button)
-        layer?.backgroundColor = normalBackground.cgColor
-    }
-
-    required init?(coder: NSCoder) {
-        return nil
-    }
-
-    private var backgroundColor: NSColor {
-        isHovering ? hoverBackground : normalBackground
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let trackingArea {
-            removeTrackingArea(trackingArea)
-        }
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
-            owner: self,
-            userInfo: nil
-        )
-        addTrackingArea(area)
-        trackingArea = area
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        isHovering = true
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        isHovering = false
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        onActivate?()
-    }
-}
-
 final class CampaignWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
     let dataSource = CampaignDataSource()
     let api = EthopexAPIClient()
@@ -124,6 +56,12 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     let createContentButton = NSButton()
     let createCreativeButton = NSButton()
     let createCampaignButton = NSButton()
+    let quickSelectReadyButton = NSButton()
+    let quickSelectNewButton = NSButton()
+    let quickClearButton = NSButton()
+    let quickTestButton = NSButton()
+    let sidebarReadyValue = NSTextField(labelWithString: "0")
+    let sidebarSelectedValue = NSTextField(labelWithString: "0")
     let displayLinkLabel = NSTextField(labelWithString: "Display link:")
     let displayLinkPopup = NSPopUpButton()
 
@@ -139,9 +77,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     let settingsButton = NSButton()
 
     var apiSettingsController: APISettingsWindowController?
-    var onNavigateToCampaign: (() -> Void)?
-    var onNavigateToDataManager: (() -> Void)?
-    var onOpenAPIConnections: (() -> Void)?
     var filtered: [CampaignRecord] = []
     var selectedIDs = Set<UUID>()
     var statuses: [UUID: JobStatus] = [:]
@@ -244,55 +179,20 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         setupBottom(bottom)
     }
 
-    private func makeSidebarNavRow(
-        symbol: String,
+    private func configureSidebarButton(
+        _ button: NSButton,
         title: String,
-        detail: String,
-        active: Bool = false,
-        action: (() -> Void)? = nil
-    ) -> NSView {
-        let row = SidebarActionView(active: active)
-        row.onActivate = action
-        row.setAccessibilityLabel(title)
-        row.translatesAutoresizingMaskIntoConstraints = false
-
-        let icon = NSImageView()
-        icon.image = NSImage(
-            systemSymbolName: symbol,
-            accessibilityDescription: nil
-        )
-        icon.contentTintColor = active ? WorkspaceUI.cyan : .secondaryLabelColor
-        icon.translatesAutoresizingMaskIntoConstraints = false
-
-        let titleLabel = NSTextField(labelWithString: title)
-        titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
-        titleLabel.textColor = active ? .labelColor : .secondaryLabelColor
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        let detailLabel = NSTextField(labelWithString: detail.uppercased())
-        detailLabel.font = .systemFont(ofSize: 9, weight: .medium)
-        detailLabel.textColor = .tertiaryLabelColor
-        detailLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        row.addSubview(icon)
-        row.addSubview(titleLabel)
-        row.addSubview(detailLabel)
-
-        NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: 48),
-            icon.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 12),
-            icon.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18),
-            icon.heightAnchor.constraint(equalToConstant: 18),
-            titleLabel.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
-            titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 9),
-            titleLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -10),
-            detailLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            detailLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
-            detailLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor)
-        ])
-
-        return row
+        symbol: String,
+        tint: NSColor,
+        action: Selector
+    ) {
+        button.title = title
+        button.target = self
+        button.action = action
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.widthAnchor.constraint(equalToConstant: 206).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        WorkspaceUI.styleAccentButton(button, tint: tint, symbol: symbol)
     }
 
     private func setupSidebar(_ sidebar: NSView) {
@@ -309,46 +209,92 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         eyebrow.textColor = WorkspaceUI.cyan
         eyebrow.translatesAutoresizingMaskIntoConstraints = false
 
-        let title = NSTextField(labelWithString: "Control Center")
+        let title = NSTextField(labelWithString: "Run Cockpit")
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "LOCAL RUNTIME  •  v1.9.1")
+        let version = NSTextField(labelWithString: "LOCAL RUNTIME  •  v1.9.2")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
 
-        let workspaceLabel = NSTextField(labelWithString: "WORKSPACE")
-        workspaceLabel.font = .systemFont(ofSize: 10, weight: .bold)
-        workspaceLabel.textColor = .tertiaryLabelColor
-        workspaceLabel.translatesAutoresizingMaskIntoConstraints = false
+        let statusLabel = NSTextField(labelWithString: "BATCH STATUS")
+        statusLabel.font = .systemFont(ofSize: 10, weight: .bold)
+        statusLabel.textColor = .tertiaryLabelColor
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let navStack = NSStackView(views: [
-            makeSidebarNavRow(
-                symbol: "square.grid.2x2",
-                title: "Campaign Console",
-                detail: "ACTIVE MODULE",
-                active: true,
-                action: { [weak self] in self?.onNavigateToCampaign?() }
-            ),
-            makeSidebarNavRow(
-                symbol: "tray.full",
-                title: "Data Manager",
-                detail: "SOURCE LIBRARY",
-                action: { [weak self] in self?.onNavigateToDataManager?() }
-            ),
-            makeSidebarNavRow(
-                symbol: "key.horizontal",
-                title: "API Connections",
-                detail: "GEMINI + ETHOPEX",
-                action: { [weak self] in self?.onOpenAPIConnections?() }
-            )
+        let statusCard = NSView()
+        statusCard.translatesAutoresizingMaskIntoConstraints = false
+        statusCard.wantsLayer = true
+        statusCard.layer?.cornerRadius = 10
+        statusCard.layer?.backgroundColor = WorkspaceUI.raisedSurface.cgColor
+        statusCard.layer?.borderWidth = 0.5
+        statusCard.layer?.borderColor = WorkspaceUI.border.cgColor
+
+        let readyCaption = NSTextField(labelWithString: "READY")
+        let selectedCaption = NSTextField(labelWithString: "SELECTED")
+        [readyCaption, selectedCaption].forEach {
+            $0.font = .monospacedSystemFont(ofSize: 9, weight: .bold)
+            $0.textColor = .tertiaryLabelColor
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+        [sidebarReadyValue, sidebarSelectedValue].forEach {
+            $0.font = .systemFont(ofSize: 23, weight: .bold)
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+        sidebarReadyValue.textColor = WorkspaceUI.cyan
+        sidebarSelectedValue.textColor = WorkspaceUI.violet
+
+        statusCard.addSubview(readyCaption)
+        statusCard.addSubview(sidebarReadyValue)
+        statusCard.addSubview(selectedCaption)
+        statusCard.addSubview(sidebarSelectedValue)
+
+        let quickLabel = NSTextField(labelWithString: "QUICK ACTIONS")
+        quickLabel.font = .systemFont(ofSize: 10, weight: .bold)
+        quickLabel.textColor = .tertiaryLabelColor
+        quickLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        configureSidebarButton(
+            quickSelectNewButton,
+            title: "Chọn DATA mới",
+            symbol: "sparkles",
+            tint: WorkspaceUI.violet,
+            action: #selector(selectLatestImportedData)
+        )
+        configureSidebarButton(
+            quickSelectReadyButton,
+            title: "Chọn tất cả READY",
+            symbol: "checkmark.circle",
+            tint: WorkspaceUI.cyan,
+            action: #selector(selectAllReady)
+        )
+        configureSidebarButton(
+            quickClearButton,
+            title: "Bỏ chọn",
+            symbol: "xmark.circle",
+            tint: .systemOrange,
+            action: #selector(clearSelection)
+        )
+        configureSidebarButton(
+            quickTestButton,
+            title: "Test Pipeline",
+            symbol: "wrench.and.screwdriver",
+            tint: .systemGreen,
+            action: #selector(runTestPipeline)
+        )
+
+        let quickStack = NSStackView(views: [
+            quickSelectNewButton,
+            quickSelectReadyButton,
+            quickClearButton,
+            quickTestButton
         ])
-        navStack.orientation = .vertical
-        navStack.alignment = .leading
-        navStack.distribution = .fill
-        navStack.spacing = 8
-        navStack.translatesAutoresizingMaskIntoConstraints = false
+        quickStack.orientation = .vertical
+        quickStack.alignment = .width
+        quickStack.distribution = .fill
+        quickStack.spacing = 7
+        quickStack.translatesAutoresizingMaskIntoConstraints = false
 
         let footer = NSView()
         footer.translatesAutoresizingMaskIntoConstraints = false
@@ -375,8 +321,10 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         sidebar.addSubview(eyebrow)
         sidebar.addSubview(title)
         sidebar.addSubview(version)
-        sidebar.addSubview(workspaceLabel)
-        sidebar.addSubview(navStack)
+        sidebar.addSubview(statusLabel)
+        sidebar.addSubview(statusCard)
+        sidebar.addSubview(quickLabel)
+        sidebar.addSubview(quickStack)
         sidebar.addSubview(footer)
 
         NSLayoutConstraint.activate([
@@ -393,12 +341,27 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             version.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             version.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 3),
             version.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            workspaceLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            workspaceLabel.topAnchor.constraint(equalTo: version.bottomAnchor, constant: 26),
-            workspaceLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            navStack.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
-            navStack.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
-            navStack.topAnchor.constraint(equalTo: workspaceLabel.bottomAnchor, constant: 10),
+            statusLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            statusLabel.topAnchor.constraint(equalTo: version.bottomAnchor, constant: 24),
+            statusLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            statusCard.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            statusCard.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            statusCard.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 9),
+            statusCard.heightAnchor.constraint(equalToConstant: 76),
+            readyCaption.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 12),
+            readyCaption.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: 10),
+            sidebarReadyValue.leadingAnchor.constraint(equalTo: readyCaption.leadingAnchor),
+            sidebarReadyValue.topAnchor.constraint(equalTo: readyCaption.bottomAnchor, constant: 2),
+            selectedCaption.leadingAnchor.constraint(equalTo: statusCard.centerXAnchor, constant: 2),
+            selectedCaption.topAnchor.constraint(equalTo: readyCaption.topAnchor),
+            sidebarSelectedValue.leadingAnchor.constraint(equalTo: selectedCaption.leadingAnchor),
+            sidebarSelectedValue.topAnchor.constraint(equalTo: selectedCaption.bottomAnchor, constant: 2),
+            quickLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            quickLabel.topAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: 22),
+            quickLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            quickStack.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            quickStack.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            quickStack.topAnchor.constraint(equalTo: quickLabel.bottomAnchor, constant: 9),
             footer.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             footer.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             footer.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -12),
@@ -1871,6 +1834,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             metricRunningValue.stringValue = "\(runningCount)"
             metricCampaignValue.stringValue = "\(campaignCount)"
             metricFailedValue.stringValue = "\(failedCount)"
+            sidebarReadyValue.stringValue = "\(ready)"
+            sidebarSelectedValue.stringValue = "\(selected)"
 
             completionProgress.maxValue =
                 Double(max(total, 1))
@@ -1905,6 +1870,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         metricRunningValue.stringValue = "0"
         metricCampaignValue.stringValue = "0"
         metricFailedValue.stringValue = "0"
+        sidebarReadyValue.stringValue = "\(ready)"
+        sidebarSelectedValue.stringValue = "\(selected)"
 
         completionProgress.maxValue = 1
         completionProgress.doubleValue = 0
@@ -3345,7 +3312,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     func setBusy(_ busy: Bool) {
         [refreshButton, selectAllButton, selectNewButton, clearButton, testPipelineButton,
          createContentButton, createCreativeButton, createCampaignButton,
-         settingsButton].forEach {
+         settingsButton, quickSelectReadyButton, quickSelectNewButton,
+         quickClearButton, quickTestButton].forEach {
             $0.isEnabled = !busy
         }
         displayLinkPopup.isEnabled = !busy
