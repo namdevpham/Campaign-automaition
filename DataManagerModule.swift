@@ -398,10 +398,15 @@ final class DataManagerWindowController: NSWindowController, NSTableViewDataSour
         rightScroll.hasHorizontalScroller = false
         rightScroll.autohidesScrollers = true
         rightScroll.borderType = .noBorder
-        rightScroll.drawsBackground = true
+        rightScroll.drawsBackground = false
         rightScroll.backgroundColor = WorkspaceUI.canvas
-        rightScroll.contentView.drawsBackground = true
+        rightScroll.appearance = NSAppearance(named: .darkAqua)
+        rightScroll.wantsLayer = true
+        rightScroll.layer?.backgroundColor = WorkspaceUI.surface.cgColor
+        rightScroll.contentView.drawsBackground = false
         rightScroll.contentView.backgroundColor = WorkspaceUI.surface
+        rightScroll.contentView.wantsLayer = true
+        rightScroll.contentView.layer?.backgroundColor = WorkspaceUI.surface.cgColor
         rightScroll.scrollerStyle = .overlay
         rightScroll.translatesAutoresizingMaskIntoConstraints = false
 
