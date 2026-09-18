@@ -102,18 +102,26 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         content.wantsLayer = true
         content.layer?.backgroundColor =
-            NSColor.underPageBackgroundColor.cgColor
+            WorkspaceUI.canvas.cgColor
 
+        let sidebar = NSView()
+        let rightColumn = NSView()
         let header = NSView()
         let overview = NSView()
         let tableScroll = NSScrollView()
         let bottom = NSView()
 
-        [header, overview, tableScroll, bottom].forEach {
+        [sidebar, rightColumn, header, overview, tableScroll, bottom].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
-            content.addSubview($0)
         }
 
+        content.addSubview(sidebar)
+        content.addSubview(rightColumn)
+        [header, overview, tableScroll, bottom].forEach {
+            rightColumn.addSubview($0)
+        }
+
+        WorkspaceUI.styleSurface(sidebar, radius: 16)
         WorkspaceUI.styleSurface(header)
         WorkspaceUI.styleSurface(overview)
         WorkspaceUI.styleScrollSurface(tableScroll)
@@ -126,32 +134,283 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         tableMinimum.priority = .defaultHigh
 
         NSLayoutConstraint.activate([
-            header.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
-            header.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -14),
-            header.topAnchor.constraint(equalTo: content.topAnchor, constant: 10),
+            sidebar.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
+            sidebar.topAnchor.constraint(equalTo: content.topAnchor, constant: 14),
+            sidebar.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -14),
+            sidebar.widthAnchor.constraint(equalToConstant: 230),
+
+            rightColumn.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: 12),
+            rightColumn.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -14),
+            rightColumn.topAnchor.constraint(equalTo: content.topAnchor, constant: 14),
+            rightColumn.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -14),
+
+            header.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
+            header.topAnchor.constraint(equalTo: rightColumn.topAnchor),
             header.heightAnchor.constraint(equalToConstant: 300),
 
-            overview.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
-            overview.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -14),
+            overview.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
+            overview.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
             overview.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
             overview.heightAnchor.constraint(equalToConstant: 100),
 
-            tableScroll.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
-            tableScroll.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -14),
+            tableScroll.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
+            tableScroll.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
             tableScroll.topAnchor.constraint(equalTo: overview.bottomAnchor, constant: 8),
             tableMinimum,
 
-            bottom.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
-            bottom.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -14),
+            bottom.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
+            bottom.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
             bottom.topAnchor.constraint(equalTo: tableScroll.bottomAnchor, constant: 8),
-            bottom.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -10),
+            bottom.bottomAnchor.constraint(equalTo: rightColumn.bottomAnchor),
             bottom.heightAnchor.constraint(equalToConstant: 158)
         ])
 
+        setupSidebar(sidebar)
         setupHeader(header)
         setupOverview(overview)
         setupTable(tableScroll)
         setupBottom(bottom)
+    }
+
+    private func makeSidebarNavRow(
+        symbol: String,
+        title: String,
+        detail: String,
+        active: Bool = false
+    ) -> NSView {
+        let row = NSView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.wantsLayer = true
+        row.layer?.cornerRadius = 10
+        row.layer?.masksToBounds = true
+        row.layer?.backgroundColor = active
+            ? WorkspaceUI.cyan.withAlphaComponent(0.14).cgColor
+            : WorkspaceUI.raisedSurface.cgColor
+        row.layer?.borderWidth = 0.5
+        row.layer?.borderColor = active
+            ? WorkspaceUI.cyan.withAlphaComponent(0.42).cgColor
+            : WorkspaceUI.border.cgColor
+
+        let icon = NSImageView()
+        icon.image = NSImage(
+            systemSymbolName: symbol,
+            accessibilityDescription: nil
+        )
+        icon.contentTintColor = active ? WorkspaceUI.cyan : .secondaryLabelColor
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        titleLabel.textColor = active ? .labelColor : .secondaryLabelColor
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let detailLabel = NSTextField(labelWithString: detail.uppercased())
+        detailLabel.font = .systemFont(ofSize: 9, weight: .medium)
+        detailLabel.textColor = .tertiaryLabelColor
+        detailLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        row.addSubview(icon)
+        row.addSubview(titleLabel)
+        row.addSubview(detailLabel)
+
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: 48),
+            icon.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 12),
+            icon.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 18),
+            icon.heightAnchor.constraint(equalToConstant: 18),
+            titleLabel.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
+            titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 9),
+            titleLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -10),
+            detailLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            detailLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
+            detailLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor)
+        ])
+
+        return row
+    }
+
+    private func makeSidebarStage(
+        number: String,
+        title: String,
+        accent: NSColor
+    ) -> NSView {
+        let row = NSView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let marker = NSTextField(labelWithString: number)
+        marker.font = .monospacedDigitSystemFont(ofSize: 10, weight: .bold)
+        marker.alignment = .center
+        marker.textColor = accent
+        marker.drawsBackground = true
+        marker.backgroundColor = accent.withAlphaComponent(0.12)
+        marker.wantsLayer = true
+        marker.layer?.cornerRadius = 6
+        marker.layer?.masksToBounds = true
+        marker.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = NSTextField(labelWithString: title)
+        label.font = .systemFont(ofSize: 11, weight: .medium)
+        label.textColor = .secondaryLabelColor
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        row.addSubview(marker)
+        row.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: 26),
+            marker.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            marker.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            marker.widthAnchor.constraint(equalToConstant: 28),
+            marker.heightAnchor.constraint(equalToConstant: 22),
+            label.leadingAnchor.constraint(equalTo: marker.trailingAnchor, constant: 10),
+            label.centerYAnchor.constraint(equalTo: marker.centerYAnchor),
+            label.trailingAnchor.constraint(equalTo: row.trailingAnchor)
+        ])
+
+        return row
+    }
+
+    private func setupSidebar(_ sidebar: NSView) {
+        let brandIcon = NSImageView()
+        brandIcon.image = NSImage(
+            systemSymbolName: "scope",
+            accessibilityDescription: "Ethopex Operations"
+        )
+        brandIcon.contentTintColor = WorkspaceUI.cyan
+        brandIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        let eyebrow = NSTextField(labelWithString: "ETHOPEX / OPS")
+        eyebrow.font = .monospacedSystemFont(ofSize: 10, weight: .bold)
+        eyebrow.textColor = WorkspaceUI.cyan
+        eyebrow.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = NSTextField(labelWithString: "Control Center")
+        title.font = .systemFont(ofSize: 19, weight: .bold)
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let version = NSTextField(labelWithString: "LOCAL RUNTIME  •  v1.9.0")
+        version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
+        version.textColor = .tertiaryLabelColor
+        version.translatesAutoresizingMaskIntoConstraints = false
+
+        let workspaceLabel = NSTextField(labelWithString: "WORKSPACE")
+        workspaceLabel.font = .systemFont(ofSize: 10, weight: .bold)
+        workspaceLabel.textColor = .tertiaryLabelColor
+        workspaceLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let navStack = NSStackView(views: [
+            makeSidebarNavRow(
+                symbol: "square.grid.2x2",
+                title: "Campaign Console",
+                detail: "ACTIVE MODULE",
+                active: true
+            ),
+            makeSidebarNavRow(
+                symbol: "tray.full",
+                title: "Data Manager",
+                detail: "SOURCE LIBRARY"
+            ),
+            makeSidebarNavRow(
+                symbol: "key.horizontal",
+                title: "API Connections",
+                detail: "GEMINI + ETHOPEX"
+            )
+        ])
+        navStack.orientation = .vertical
+        navStack.alignment = .leading
+        navStack.distribution = .fill
+        navStack.spacing = 8
+        navStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let pipelineLabel = NSTextField(labelWithString: "AUTOMATION PIPELINE")
+        pipelineLabel.font = .systemFont(ofSize: 10, weight: .bold)
+        pipelineLabel.textColor = .tertiaryLabelColor
+        pipelineLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let stageStack = NSStackView(views: [
+            makeSidebarStage(number: "01", title: "Source selection", accent: WorkspaceUI.cyan),
+            makeSidebarStage(number: "02", title: "Gemini generation", accent: WorkspaceUI.violet),
+            makeSidebarStage(number: "03", title: "QA validation", accent: .systemGreen),
+            makeSidebarStage(number: "04", title: "Content + creative", accent: .systemOrange),
+            makeSidebarStage(number: "05", title: "Campaign launch", accent: .systemBlue)
+        ])
+        stageStack.orientation = .vertical
+        stageStack.alignment = .leading
+        stageStack.distribution = .fill
+        stageStack.spacing = 2
+        stageStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let footer = NSView()
+        footer.translatesAutoresizingMaskIntoConstraints = false
+        footer.wantsLayer = true
+        footer.layer?.cornerRadius = 10
+        footer.layer?.backgroundColor = WorkspaceUI.cyan.withAlphaComponent(0.07).cgColor
+        footer.layer?.borderWidth = 0.5
+        footer.layer?.borderColor = WorkspaceUI.cyan.withAlphaComponent(0.20).cgColor
+
+        let footerTitle = NSTextField(labelWithString: "READY FOR DISPATCH")
+        footerTitle.font = .systemFont(ofSize: 10, weight: .bold)
+        footerTitle.textColor = WorkspaceUI.cyan
+        footerTitle.translatesAutoresizingMaskIntoConstraints = false
+
+        let footerText = NSTextField(wrappingLabelWithString: "Select records, validate the pipeline, then launch a multilingual campaign batch.")
+        footerText.font = .systemFont(ofSize: 10, weight: .medium)
+        footerText.textColor = .secondaryLabelColor
+        footerText.maximumNumberOfLines = 3
+        footerText.translatesAutoresizingMaskIntoConstraints = false
+
+        footer.addSubview(footerTitle)
+        footer.addSubview(footerText)
+        sidebar.addSubview(brandIcon)
+        sidebar.addSubview(eyebrow)
+        sidebar.addSubview(title)
+        sidebar.addSubview(version)
+        sidebar.addSubview(workspaceLabel)
+        sidebar.addSubview(navStack)
+        sidebar.addSubview(pipelineLabel)
+        sidebar.addSubview(stageStack)
+        sidebar.addSubview(footer)
+
+        NSLayoutConstraint.activate([
+            brandIcon.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 16),
+            brandIcon.topAnchor.constraint(equalTo: sidebar.topAnchor, constant: 18),
+            brandIcon.widthAnchor.constraint(equalToConstant: 22),
+            brandIcon.heightAnchor.constraint(equalToConstant: 22),
+            eyebrow.leadingAnchor.constraint(equalTo: brandIcon.trailingAnchor, constant: 9),
+            eyebrow.centerYAnchor.constraint(equalTo: brandIcon.centerYAnchor),
+            eyebrow.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -14),
+            title.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 16),
+            title.topAnchor.constraint(equalTo: brandIcon.bottomAnchor, constant: 10),
+            title.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -14),
+            version.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            version.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 3),
+            version.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            workspaceLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            workspaceLabel.topAnchor.constraint(equalTo: version.bottomAnchor, constant: 26),
+            workspaceLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            navStack.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            navStack.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            navStack.topAnchor.constraint(equalTo: workspaceLabel.bottomAnchor, constant: 10),
+            pipelineLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            pipelineLabel.topAnchor.constraint(equalTo: navStack.bottomAnchor, constant: 24),
+            pipelineLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            stageStack.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            stageStack.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            stageStack.topAnchor.constraint(equalTo: pipelineLabel.bottomAnchor, constant: 10),
+            footer.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            footer.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            footer.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -12),
+            footer.heightAnchor.constraint(equalToConstant: 86),
+            footerTitle.leadingAnchor.constraint(equalTo: footer.leadingAnchor, constant: 12),
+            footerTitle.topAnchor.constraint(equalTo: footer.topAnchor, constant: 11),
+            footerTitle.trailingAnchor.constraint(equalTo: footer.trailingAnchor, constant: -10),
+            footerText.leadingAnchor.constraint(equalTo: footerTitle.leadingAnchor),
+            footerText.trailingAnchor.constraint(equalTo: footer.trailingAnchor, constant: -10),
+            footerText.topAnchor.constraint(equalTo: footerTitle.bottomAnchor, constant: 5),
+            footerText.bottomAnchor.constraint(lessThanOrEqualTo: footer.bottomAnchor, constant: -9)
+        ])
     }
 
     func setupHeader(_ header: NSView) {

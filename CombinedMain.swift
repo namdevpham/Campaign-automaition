@@ -250,7 +250,7 @@ final class CombinedWindowController: NSWindowController {
     )
 
     private let titleLabel = NSTextField(labelWithString: "Ethopex Workspace")
-    private let subtitleLabel = NSTextField(labelWithString: "Operations Workspace  •  Data + Campaign Monitoring  •  v1.8.0")
+    private let subtitleLabel = NSTextField(labelWithString: "Operations Workspace  •  Data + Campaign Monitoring  •  v1.9.0")
     private let container = NSView()
     private let loadingLabel = NSTextField(labelWithString: "Đang tải...")
     private let updateVersionButton = NSButton()
