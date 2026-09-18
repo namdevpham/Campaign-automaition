@@ -750,7 +750,6 @@ final class CombinedWindowController: NSWindowController {
         view.isHidden = false
 
         campaignController?.reloadRecords()
-        campaignController?.refreshAPIStatus()
     }
 
     private func refreshModule(index: Int) {
@@ -758,7 +757,6 @@ final class CombinedWindowController: NSWindowController {
             dataManagerController?.reloadData()
         } else {
             campaignController?.reloadRecords()
-            campaignController?.refreshAPIStatus()
         }
     }
 

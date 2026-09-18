@@ -62,7 +62,11 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     let failureCountValue = NSTextField(labelWithString: "0")
     let failureSummaryLabel = NSTextField(labelWithString: "Không có lỗi")
     let failureTextView = NSTextView()
+    let realtimeFailureCountValue = NSTextField(labelWithString: "0")
+    let realtimeFailureTextView = NSTextView()
     var failureReportIDs: [UUID] = []
+    var realtimeFailureIDs = Set<UUID>()
+    var realtimeFailureMessages: [String] = []
     let displayLinkLabel = NSTextField(labelWithString: "Display link:")
     let displayLinkPopup = NSPopUpButton()
 
@@ -98,10 +102,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         self.init(window: window)
         setupUI()
         reloadRecords()
-
-        DispatchQueue.main.async { [weak self] in
-            self?.refreshFacebookPages(silent: true)
-        }
     }
 
     func setupUI() {
@@ -156,21 +156,21 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             header.topAnchor.constraint(equalTo: rightColumn.topAnchor),
             header.heightAnchor.constraint(equalToConstant: 300),
 
+            bottom.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
+            bottom.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
+            bottom.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
+            bottom.heightAnchor.constraint(equalToConstant: 158),
+
             overview.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             overview.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
-            overview.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
+            overview.topAnchor.constraint(equalTo: bottom.bottomAnchor, constant: 8),
             overview.heightAnchor.constraint(equalToConstant: 100),
 
             tableScroll.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             tableScroll.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
             tableScroll.topAnchor.constraint(equalTo: overview.bottomAnchor, constant: 8),
-            tableMinimum,
-
-            bottom.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
-            bottom.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
-            bottom.topAnchor.constraint(equalTo: tableScroll.bottomAnchor, constant: 8),
-            bottom.bottomAnchor.constraint(equalTo: rightColumn.bottomAnchor),
-            bottom.heightAnchor.constraint(equalToConstant: 158)
+            tableScroll.bottomAnchor.constraint(equalTo: rightColumn.bottomAnchor),
+            tableMinimum
         ])
 
         setupSidebar(sidebar)
@@ -251,6 +251,48 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         failureScroll.backgroundColor = WorkspaceUI.canvas
         failureScroll.documentView = failureTextView
 
+        let realtimeScopeLabel = NSTextField(labelWithString: "REALTIME FAILED • CURRENT AUTO")
+        realtimeScopeLabel.font = .systemFont(ofSize: 10, weight: .bold)
+        realtimeScopeLabel.textColor = .systemOrange
+        realtimeScopeLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let realtimeCard = NSView()
+        realtimeCard.translatesAutoresizingMaskIntoConstraints = false
+        realtimeCard.wantsLayer = true
+        realtimeCard.layer?.cornerRadius = 10
+        realtimeCard.layer?.backgroundColor = WorkspaceUI.raisedSurface.cgColor
+        realtimeCard.layer?.borderWidth = 0.5
+        realtimeCard.layer?.borderColor = NSColor.systemOrange.withAlphaComponent(0.25).cgColor
+
+        let realtimeCaption = NSTextField(labelWithString: "ERRORS DURING LAST AUTO")
+        realtimeCaption.font = .monospacedSystemFont(ofSize: 9, weight: .bold)
+        realtimeCaption.textColor = .tertiaryLabelColor
+        realtimeCaption.translatesAutoresizingMaskIntoConstraints = false
+
+        realtimeFailureCountValue.font = .systemFont(ofSize: 24, weight: .bold)
+        realtimeFailureCountValue.textColor = .systemOrange
+        realtimeFailureCountValue.translatesAutoresizingMaskIntoConstraints = false
+
+        realtimeCard.addSubview(realtimeCaption)
+        realtimeCard.addSubview(realtimeFailureCountValue)
+
+        realtimeFailureTextView.isEditable = false
+        realtimeFailureTextView.isSelectable = true
+        realtimeFailureTextView.drawsBackground = true
+        realtimeFailureTextView.backgroundColor = WorkspaceUI.canvas
+        realtimeFailureTextView.textColor = .labelColor
+        realtimeFailureTextView.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
+        realtimeFailureTextView.textContainerInset = NSSize(width: 8, height: 8)
+
+        let realtimeScroll = NSScrollView()
+        realtimeScroll.translatesAutoresizingMaskIntoConstraints = false
+        realtimeScroll.hasVerticalScroller = true
+        realtimeScroll.hasHorizontalScroller = false
+        realtimeScroll.borderType = .noBorder
+        realtimeScroll.drawsBackground = true
+        realtimeScroll.backgroundColor = WorkspaceUI.canvas
+        realtimeScroll.documentView = realtimeFailureTextView
+
         selectFailedButton.title = "Chọn record FAILED để retry"
         selectFailedButton.target = self
         selectFailedButton.action = #selector(selectFailedRecords)
@@ -298,6 +340,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         sidebar.addSubview(failureScopeLabel)
         sidebar.addSubview(statusCard)
         sidebar.addSubview(failureScroll)
+        sidebar.addSubview(realtimeScopeLabel)
+        sidebar.addSubview(realtimeCard)
+        sidebar.addSubview(realtimeScroll)
         sidebar.addSubview(selectFailedButton)
         sidebar.addSubview(refreshFailureReportButton)
         sidebar.addSubview(footer)
@@ -333,10 +378,25 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             failureScroll.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             failureScroll.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             failureScroll.topAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: 10),
-            failureScroll.heightAnchor.constraint(equalToConstant: 278),
+            failureScroll.heightAnchor.constraint(equalToConstant: 160),
+            realtimeScopeLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            realtimeScopeLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            realtimeScopeLabel.topAnchor.constraint(equalTo: failureScroll.bottomAnchor, constant: 12),
+            realtimeCard.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            realtimeCard.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            realtimeCard.topAnchor.constraint(equalTo: realtimeScopeLabel.bottomAnchor, constant: 8),
+            realtimeCard.heightAnchor.constraint(equalToConstant: 58),
+            realtimeCaption.leadingAnchor.constraint(equalTo: realtimeCard.leadingAnchor, constant: 12),
+            realtimeCaption.topAnchor.constraint(equalTo: realtimeCard.topAnchor, constant: 9),
+            realtimeFailureCountValue.leadingAnchor.constraint(equalTo: realtimeCaption.leadingAnchor),
+            realtimeFailureCountValue.topAnchor.constraint(equalTo: realtimeCaption.bottomAnchor, constant: 1),
+            realtimeScroll.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            realtimeScroll.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            realtimeScroll.topAnchor.constraint(equalTo: realtimeCard.bottomAnchor, constant: 7),
+            realtimeScroll.heightAnchor.constraint(equalToConstant: 92),
             selectFailedButton.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             selectFailedButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
-            selectFailedButton.topAnchor.constraint(equalTo: failureScroll.bottomAnchor, constant: 8),
+            selectFailedButton.topAnchor.constraint(equalTo: realtimeScroll.bottomAnchor, constant: 8),
             selectFailedButton.heightAnchor.constraint(equalToConstant: 30),
             refreshFailureReportButton.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             refreshFailureReportButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
@@ -345,7 +405,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             footer.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             footer.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             footer.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -12),
-            footer.heightAnchor.constraint(equalToConstant: 86),
+            footer.heightAnchor.constraint(equalToConstant: 76),
             footerTitle.leadingAnchor.constraint(equalTo: footer.leadingAnchor, constant: 12),
             footerTitle.topAnchor.constraint(equalTo: footer.topAnchor, constant: 11),
             footerTitle.trailingAnchor.constraint(equalTo: footer.trailingAnchor, constant: -10),
@@ -409,6 +469,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         apiStatusLabel.layer?.cornerRadius = 8
         apiStatusLabel.layer?.masksToBounds = true
         apiStatusLabel.translatesAutoresizingMaskIntoConstraints = false
+        apiStatusLabel.stringValue = "● API CHECK ON ACTION"
+        apiStatusLabel.textColor = WorkspaceUI.cyan
+        apiStatusLabel.backgroundColor = WorkspaceUI.cyan.withAlphaComponent(0.09)
 
         let divider = NSBox()
         divider.boxType = .separator
@@ -1100,8 +1163,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
                 constant: -10
             )
         ])
-
-        refreshAPIStatus()
 
         DispatchQueue.main.async { [weak self, weak campaignPanel] in
             guard let self,
@@ -2070,6 +2131,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
              .done,
              .failed:
             refreshIntegrationState(for: id)
+            if status == .failed && autoRunOverviewActive {
+                realtimeFailureIDs.insert(id)
+            }
 
         default:
             break
@@ -2786,9 +2850,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     }
 
     private func updateFailureReport() {
-        failureScopeLabel.stringValue = autoRunOverviewActive
-            ? "FAILED IN CURRENT RUN"
-            : "LATEST FAILED STATE"
+        updateRealtimeFailureReport()
 
         let failedRecords = dataSource.records
             .compactMap { record -> (CampaignRecord, IntegrationState)? in
@@ -2847,6 +2909,40 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         failureTextView.string = lines.joined(separator: "\n")
         failureTextView.scrollToBeginningOfDocument(nil)
+    }
+
+    private func updateRealtimeFailureReport() {
+        let realtimeRecords = dataSource.records
+            .compactMap { record -> (CampaignRecord, IntegrationState)? in
+                guard realtimeFailureIDs.contains(record.id) else { return nil }
+                return (record, cachedState(for: record))
+            }
+            .sorted {
+                ($0.0.stt ?? 0, $0.0.name) < ($1.0.stt ?? 0, $1.0.name)
+            }
+
+        let totalRealtimeFailures = realtimeRecords.count + realtimeFailureMessages.count
+        realtimeFailureCountValue.stringValue = "\(totalRealtimeFailures)"
+
+        guard totalRealtimeFailures > 0 else {
+            realtimeFailureTextView.string =
+                "CHƯA CÓ LỖI REALTIME\n\n" +
+                "Khu vực này chỉ ghi lỗi phát sinh từ lần TẠO CAMPAIGN AUTO gần nhất."
+            return
+        }
+
+        var lines = realtimeFailureMessages.map { "⚠ \($0)" }
+        for (record, state) in realtimeRecords {
+            let stage = failureStage(for: state, error: state.lastError)
+            let number = record.stt.map(String.init) ?? "-"
+            let message = (state.lastError ?? "Không có error message")
+                .replacingOccurrences(of: "\n", with: " ")
+            lines.append("#\(number)  [\(stage)] \(record.name)")
+            lines.append("↳ \(message)")
+        }
+
+        realtimeFailureTextView.string = lines.joined(separator: "\n")
+        realtimeFailureTextView.scrollToEndOfDocument(nil)
     }
 
     @objc func selectFailedRecords() {
@@ -3282,6 +3378,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         }
 
         setBusy(true)
+        realtimeFailureIDs.removeAll()
+        realtimeFailureMessages.removeAll()
+        updateRealtimeFailureReport()
 
         resetAutoRunOverview(
             sourceCount: sourceRecords.count,
@@ -3324,6 +3423,10 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
                 )
 
                 if prepared.isEmpty {
+                    self.realtimeFailureMessages.append(contentsOf: result.failures.map {
+                        "\($0.recordName) [\($0.language.shortLabel)]: \($0.message)"
+                    })
+                    self.updateRealtimeFailureReport()
                     self.finalizeAutoRunOverview()
                     self.finishMultilingualRunTimer(
                         outcome: "FAILED"
@@ -3351,10 +3454,14 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
                 if !result.failures.isEmpty {
                     self.appendLog("⚠ Variant failures: \(result.failures.count)")
                     for failure in result.failures {
+                        self.realtimeFailureMessages.append(
+                            "\(failure.recordName) [\(failure.language.shortLabel)]: \(failure.message)"
+                        )
                         self.appendLog(
                             "  - \(failure.recordName) [\(failure.language.shortLabel)]: \(failure.message)"
                         )
                     }
+                    self.updateRealtimeFailureReport()
                 }
 
                 self.engine.createCampaignAutoPipeline(
