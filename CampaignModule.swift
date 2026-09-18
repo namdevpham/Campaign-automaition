@@ -124,9 +124,10 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         content.addSubview(sidebar)
         content.addSubview(rightColumn)
-        [header, overview, tableScroll, bottom].forEach {
+        [header, overview, tableScroll].forEach {
             rightColumn.addSubview($0)
         }
+        sidebar.addSubview(bottom)
 
         WorkspaceUI.styleSurface(sidebar, radius: 16)
         WorkspaceUI.styleSurface(header)
@@ -156,14 +157,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             header.topAnchor.constraint(equalTo: rightColumn.topAnchor),
             header.heightAnchor.constraint(equalToConstant: 300),
 
-            bottom.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
-            bottom.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
-            bottom.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
-            bottom.heightAnchor.constraint(equalToConstant: 158),
-
             overview.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
             overview.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor),
-            overview.topAnchor.constraint(equalTo: bottom.bottomAnchor, constant: 8),
+            overview.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
             overview.heightAnchor.constraint(equalToConstant: 100),
 
             tableScroll.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor),
@@ -173,14 +169,14 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             tableMinimum
         ])
 
-        setupSidebar(sidebar)
+        setupSidebar(sidebar, activity: bottom)
         setupHeader(header)
         setupOverview(overview)
         setupTable(tableScroll)
         setupBottom(bottom)
     }
 
-    private func setupSidebar(_ sidebar: NSView) {
+    private func setupLegacyFailureSidebar(_ sidebar: NSView) {
         let brandIcon = NSImageView()
         brandIcon.image = NSImage(
             systemSymbolName: "scope",
@@ -198,7 +194,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.0")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.1")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -414,6 +410,134 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             footerText.topAnchor.constraint(equalTo: footerTitle.bottomAnchor, constant: 5),
             footerText.bottomAnchor.constraint(lessThanOrEqualTo: footer.bottomAnchor, constant: -9)
         ])
+    }
+
+    private func setupSidebar(_ sidebar: NSView, activity: NSView) {
+        let brandIcon = NSImageView()
+        brandIcon.image = NSImage(
+            systemSymbolName: "waveform.path.ecg",
+            accessibilityDescription: "Live Activity"
+        )
+        brandIcon.contentTintColor = WorkspaceUI.cyan
+        brandIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        let eyebrow = NSTextField(labelWithString: "ETHOPEX / OPS")
+        eyebrow.font = .monospacedSystemFont(ofSize: 10, weight: .bold)
+        eyebrow.textColor = WorkspaceUI.cyan
+        eyebrow.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = NSTextField(labelWithString: "Live Activity")
+        title.font = .systemFont(ofSize: 19, weight: .bold)
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.1")
+        version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
+        version.textColor = .tertiaryLabelColor
+        version.translatesAutoresizingMaskIntoConstraints = false
+
+        let totalCard = makeActivityMetricCard(
+            title: "TOTAL FAILED",
+            value: failureCountValue,
+            tint: .systemRed
+        )
+        let realtimeCard = makeActivityMetricCard(
+            title: "REALTIME FAILED",
+            value: realtimeFailureCountValue,
+            tint: .systemOrange
+        )
+
+        selectFailedButton.title = "Chọn FAILED để retry"
+        selectFailedButton.target = self
+        selectFailedButton.action = #selector(selectFailedRecords)
+        selectFailedButton.translatesAutoresizingMaskIntoConstraints = false
+        WorkspaceUI.styleAccentButton(
+            selectFailedButton,
+            tint: .systemRed,
+            symbol: "arrow.clockwise"
+        )
+
+        refreshFailureReportButton.title = "Làm mới trạng thái"
+        refreshFailureReportButton.target = self
+        refreshFailureReportButton.action = #selector(refreshFailureReport)
+        refreshFailureReportButton.translatesAutoresizingMaskIntoConstraints = false
+        WorkspaceUI.styleSecondaryButton(
+            refreshFailureReportButton,
+            symbol: "arrow.clockwise"
+        )
+
+        [brandIcon, eyebrow, title, version, totalCard, realtimeCard,
+         selectFailedButton, refreshFailureReportButton].forEach {
+            sidebar.addSubview($0)
+        }
+
+        NSLayoutConstraint.activate([
+            brandIcon.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 16),
+            brandIcon.topAnchor.constraint(equalTo: sidebar.topAnchor, constant: 18),
+            brandIcon.widthAnchor.constraint(equalToConstant: 22),
+            brandIcon.heightAnchor.constraint(equalToConstant: 22),
+            eyebrow.leadingAnchor.constraint(equalTo: brandIcon.trailingAnchor, constant: 9),
+            eyebrow.centerYAnchor.constraint(equalTo: brandIcon.centerYAnchor),
+            eyebrow.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -14),
+            title.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 16),
+            title.topAnchor.constraint(equalTo: brandIcon.bottomAnchor, constant: 10),
+            title.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -14),
+            version.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            version.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 3),
+            version.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            totalCard.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            totalCard.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            totalCard.topAnchor.constraint(equalTo: version.bottomAnchor, constant: 18),
+            totalCard.heightAnchor.constraint(equalToConstant: 55),
+            realtimeCard.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            realtimeCard.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            realtimeCard.topAnchor.constraint(equalTo: totalCard.bottomAnchor, constant: 7),
+            realtimeCard.heightAnchor.constraint(equalToConstant: 55),
+            selectFailedButton.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            selectFailedButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            selectFailedButton.topAnchor.constraint(equalTo: realtimeCard.bottomAnchor, constant: 8),
+            selectFailedButton.heightAnchor.constraint(equalToConstant: 28),
+            refreshFailureReportButton.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            refreshFailureReportButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            refreshFailureReportButton.topAnchor.constraint(equalTo: selectFailedButton.bottomAnchor, constant: 6),
+            refreshFailureReportButton.heightAnchor.constraint(equalToConstant: 28),
+            activity.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            activity.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            activity.topAnchor.constraint(equalTo: refreshFailureReportButton.bottomAnchor, constant: 10),
+            activity.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -12)
+        ])
+    }
+
+    private func makeActivityMetricCard(
+        title: String,
+        value: NSTextField,
+        tint: NSColor
+    ) -> NSView {
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        card.layer?.cornerRadius = 9
+        card.layer?.backgroundColor = WorkspaceUI.raisedSurface.cgColor
+        card.layer?.borderWidth = 0.5
+        card.layer?.borderColor = tint.withAlphaComponent(0.22).cgColor
+
+        let label = NSTextField(labelWithString: title)
+        label.font = .monospacedSystemFont(ofSize: 9, weight: .bold)
+        label.textColor = .tertiaryLabelColor
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        value.font = .systemFont(ofSize: 21, weight: .bold)
+        value.textColor = tint
+        value.translatesAutoresizingMaskIntoConstraints = false
+
+        card.addSubview(label)
+        card.addSubview(value)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 11),
+            label.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            value.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            value.centerYAnchor.constraint(equalTo: card.centerYAnchor)
+        ])
+        return card
     }
 
     func setupHeader(_ header: NSView) {
