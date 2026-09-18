@@ -234,18 +234,17 @@ struct CampaignSwiftUIHeader: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .bold))
                 }
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundColor(.primary)
                 .padding(.horizontal, 9)
                 .frame(height: 30)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.black.opacity(0.18))
                 .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             }
             .menuStyle(.borderlessButton)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity)
         .tint(tint)
