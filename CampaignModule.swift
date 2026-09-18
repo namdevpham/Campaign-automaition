@@ -56,12 +56,13 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     let createContentButton = NSButton()
     let createCreativeButton = NSButton()
     let createCampaignButton = NSButton()
-    let quickSelectReadyButton = NSButton()
-    let quickSelectNewButton = NSButton()
-    let quickClearButton = NSButton()
-    let quickTestButton = NSButton()
-    let sidebarReadyValue = NSTextField(labelWithString: "0")
-    let sidebarSelectedValue = NSTextField(labelWithString: "0")
+    let selectFailedButton = NSButton()
+    let refreshFailureReportButton = NSButton()
+    let failureScopeLabel = NSTextField(labelWithString: "LATEST FAILED STATE")
+    let failureCountValue = NSTextField(labelWithString: "0")
+    let failureSummaryLabel = NSTextField(labelWithString: "Không có lỗi")
+    let failureTextView = NSTextView()
+    var failureReportIDs: [UUID] = []
     let displayLinkLabel = NSTextField(labelWithString: "Display link:")
     let displayLinkPopup = NSPopUpButton()
 
@@ -143,7 +144,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             sidebar.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
             sidebar.topAnchor.constraint(equalTo: content.topAnchor, constant: 14),
             sidebar.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -14),
-            sidebar.widthAnchor.constraint(equalToConstant: 230),
+            sidebar.widthAnchor.constraint(equalToConstant: 310),
 
             rightColumn.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: 12),
             rightColumn.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -14),
@@ -179,22 +180,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         setupBottom(bottom)
     }
 
-    private func configureSidebarButton(
-        _ button: NSButton,
-        title: String,
-        symbol: String,
-        tint: NSColor,
-        action: Selector
-    ) {
-        button.title = title
-        button.target = self
-        button.action = action
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.widthAnchor.constraint(equalToConstant: 206).isActive = true
-        button.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        WorkspaceUI.styleAccentButton(button, tint: tint, symbol: symbol)
-    }
-
     private func setupSidebar(_ sidebar: NSView) {
         let brandIcon = NSImageView()
         brandIcon.image = NSImage(
@@ -209,19 +194,18 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         eyebrow.textColor = WorkspaceUI.cyan
         eyebrow.translatesAutoresizingMaskIntoConstraints = false
 
-        let title = NSTextField(labelWithString: "Run Cockpit")
+        let title = NSTextField(labelWithString: "Failure Report")
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "LOCAL RUNTIME  •  v1.9.2")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.10.0")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
 
-        let statusLabel = NSTextField(labelWithString: "BATCH STATUS")
-        statusLabel.font = .systemFont(ofSize: 10, weight: .bold)
-        statusLabel.textColor = .tertiaryLabelColor
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        failureScopeLabel.font = .systemFont(ofSize: 10, weight: .bold)
+        failureScopeLabel.textColor = .systemRed
+        failureScopeLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let statusCard = NSView()
         statusCard.translatesAutoresizingMaskIntoConstraints = false
@@ -231,70 +215,60 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         statusCard.layer?.borderWidth = 0.5
         statusCard.layer?.borderColor = WorkspaceUI.border.cgColor
 
-        let readyCaption = NSTextField(labelWithString: "READY")
-        let selectedCaption = NSTextField(labelWithString: "SELECTED")
-        [readyCaption, selectedCaption].forEach {
-            $0.font = .monospacedSystemFont(ofSize: 9, weight: .bold)
-            $0.textColor = .tertiaryLabelColor
-            $0.translatesAutoresizingMaskIntoConstraints = false
-        }
-        [sidebarReadyValue, sidebarSelectedValue].forEach {
-            $0.font = .systemFont(ofSize: 23, weight: .bold)
-            $0.translatesAutoresizingMaskIntoConstraints = false
-        }
-        sidebarReadyValue.textColor = WorkspaceUI.cyan
-        sidebarSelectedValue.textColor = WorkspaceUI.violet
+        let failureCaption = NSTextField(labelWithString: "TOTAL FAILED")
+        failureCaption.font = .monospacedSystemFont(ofSize: 9, weight: .bold)
+        failureCaption.textColor = .tertiaryLabelColor
+        failureCaption.translatesAutoresizingMaskIntoConstraints = false
 
-        statusCard.addSubview(readyCaption)
-        statusCard.addSubview(sidebarReadyValue)
-        statusCard.addSubview(selectedCaption)
-        statusCard.addSubview(sidebarSelectedValue)
+        failureCountValue.font = .systemFont(ofSize: 30, weight: .bold)
+        failureCountValue.textColor = .systemRed
+        failureCountValue.translatesAutoresizingMaskIntoConstraints = false
 
-        let quickLabel = NSTextField(labelWithString: "QUICK ACTIONS")
-        quickLabel.font = .systemFont(ofSize: 10, weight: .bold)
-        quickLabel.textColor = .tertiaryLabelColor
-        quickLabel.translatesAutoresizingMaskIntoConstraints = false
+        failureSummaryLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        failureSummaryLabel.textColor = .secondaryLabelColor
+        failureSummaryLabel.maximumNumberOfLines = 3
+        failureSummaryLabel.lineBreakMode = .byWordWrapping
+        failureSummaryLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        configureSidebarButton(
-            quickSelectNewButton,
-            title: "Chọn DATA mới",
-            symbol: "sparkles",
-            tint: WorkspaceUI.violet,
-            action: #selector(selectLatestImportedData)
-        )
-        configureSidebarButton(
-            quickSelectReadyButton,
-            title: "Chọn tất cả READY",
-            symbol: "checkmark.circle",
-            tint: WorkspaceUI.cyan,
-            action: #selector(selectAllReady)
-        )
-        configureSidebarButton(
-            quickClearButton,
-            title: "Bỏ chọn",
-            symbol: "xmark.circle",
-            tint: .systemOrange,
-            action: #selector(clearSelection)
-        )
-        configureSidebarButton(
-            quickTestButton,
-            title: "Test Pipeline",
-            symbol: "wrench.and.screwdriver",
-            tint: .systemGreen,
-            action: #selector(runTestPipeline)
+        statusCard.addSubview(failureCaption)
+        statusCard.addSubview(failureCountValue)
+        statusCard.addSubview(failureSummaryLabel)
+
+        failureTextView.isEditable = false
+        failureTextView.isSelectable = true
+        failureTextView.drawsBackground = true
+        failureTextView.backgroundColor = WorkspaceUI.canvas
+        failureTextView.textColor = .labelColor
+        failureTextView.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
+        failureTextView.textContainerInset = NSSize(width: 8, height: 8)
+
+        let failureScroll = NSScrollView()
+        failureScroll.translatesAutoresizingMaskIntoConstraints = false
+        failureScroll.hasVerticalScroller = true
+        failureScroll.hasHorizontalScroller = false
+        failureScroll.borderType = .noBorder
+        failureScroll.drawsBackground = true
+        failureScroll.backgroundColor = WorkspaceUI.canvas
+        failureScroll.documentView = failureTextView
+
+        selectFailedButton.title = "Chọn record FAILED để retry"
+        selectFailedButton.target = self
+        selectFailedButton.action = #selector(selectFailedRecords)
+        selectFailedButton.translatesAutoresizingMaskIntoConstraints = false
+        WorkspaceUI.styleAccentButton(
+            selectFailedButton,
+            tint: .systemRed,
+            symbol: "arrow.clockwise"
         )
 
-        let quickStack = NSStackView(views: [
-            quickSelectNewButton,
-            quickSelectReadyButton,
-            quickClearButton,
-            quickTestButton
-        ])
-        quickStack.orientation = .vertical
-        quickStack.alignment = .width
-        quickStack.distribution = .fill
-        quickStack.spacing = 7
-        quickStack.translatesAutoresizingMaskIntoConstraints = false
+        refreshFailureReportButton.title = "Làm mới báo cáo"
+        refreshFailureReportButton.target = self
+        refreshFailureReportButton.action = #selector(refreshFailureReport)
+        refreshFailureReportButton.translatesAutoresizingMaskIntoConstraints = false
+        WorkspaceUI.styleSecondaryButton(
+            refreshFailureReportButton,
+            symbol: "arrow.clockwise"
+        )
 
         let footer = NSView()
         footer.translatesAutoresizingMaskIntoConstraints = false
@@ -304,12 +278,12 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         footer.layer?.borderWidth = 0.5
         footer.layer?.borderColor = WorkspaceUI.cyan.withAlphaComponent(0.20).cgColor
 
-        let footerTitle = NSTextField(labelWithString: "READY FOR DISPATCH")
+        let footerTitle = NSTextField(labelWithString: "HOW TO USE")
         footerTitle.font = .systemFont(ofSize: 10, weight: .bold)
         footerTitle.textColor = WorkspaceUI.cyan
         footerTitle.translatesAutoresizingMaskIntoConstraints = false
 
-        let footerText = NSTextField(wrappingLabelWithString: "Select records, validate the pipeline, then launch a multilingual campaign batch.")
+        let footerText = NSTextField(wrappingLabelWithString: "Chọn lỗi để retry, kiểm tra log chi tiết, sau đó chạy lại TẠO CAMPAIGN AUTO.")
         footerText.font = .systemFont(ofSize: 10, weight: .medium)
         footerText.textColor = .secondaryLabelColor
         footerText.maximumNumberOfLines = 3
@@ -321,10 +295,11 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         sidebar.addSubview(eyebrow)
         sidebar.addSubview(title)
         sidebar.addSubview(version)
-        sidebar.addSubview(statusLabel)
+        sidebar.addSubview(failureScopeLabel)
         sidebar.addSubview(statusCard)
-        sidebar.addSubview(quickLabel)
-        sidebar.addSubview(quickStack)
+        sidebar.addSubview(failureScroll)
+        sidebar.addSubview(selectFailedButton)
+        sidebar.addSubview(refreshFailureReportButton)
         sidebar.addSubview(footer)
 
         NSLayoutConstraint.activate([
@@ -341,27 +316,32 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             version.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             version.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 3),
             version.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            statusLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            statusLabel.topAnchor.constraint(equalTo: version.bottomAnchor, constant: 24),
-            statusLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            failureScopeLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            failureScopeLabel.topAnchor.constraint(equalTo: version.bottomAnchor, constant: 24),
+            failureScopeLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
             statusCard.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             statusCard.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
-            statusCard.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 9),
-            statusCard.heightAnchor.constraint(equalToConstant: 76),
-            readyCaption.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 12),
-            readyCaption.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: 10),
-            sidebarReadyValue.leadingAnchor.constraint(equalTo: readyCaption.leadingAnchor),
-            sidebarReadyValue.topAnchor.constraint(equalTo: readyCaption.bottomAnchor, constant: 2),
-            selectedCaption.leadingAnchor.constraint(equalTo: statusCard.centerXAnchor, constant: 2),
-            selectedCaption.topAnchor.constraint(equalTo: readyCaption.topAnchor),
-            sidebarSelectedValue.leadingAnchor.constraint(equalTo: selectedCaption.leadingAnchor),
-            sidebarSelectedValue.topAnchor.constraint(equalTo: selectedCaption.bottomAnchor, constant: 2),
-            quickLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            quickLabel.topAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: 22),
-            quickLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            quickStack.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
-            quickStack.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
-            quickStack.topAnchor.constraint(equalTo: quickLabel.bottomAnchor, constant: 9),
+            statusCard.topAnchor.constraint(equalTo: failureScopeLabel.bottomAnchor, constant: 9),
+            statusCard.heightAnchor.constraint(equalToConstant: 82),
+            failureCaption.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 12),
+            failureCaption.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: 10),
+            failureCountValue.leadingAnchor.constraint(equalTo: failureCaption.leadingAnchor),
+            failureCountValue.topAnchor.constraint(equalTo: failureCaption.bottomAnchor, constant: 1),
+            failureSummaryLabel.leadingAnchor.constraint(equalTo: failureCountValue.trailingAnchor, constant: 12),
+            failureSummaryLabel.trailingAnchor.constraint(equalTo: statusCard.trailingAnchor, constant: -10),
+            failureSummaryLabel.centerYAnchor.constraint(equalTo: statusCard.centerYAnchor),
+            failureScroll.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            failureScroll.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            failureScroll.topAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: 10),
+            failureScroll.heightAnchor.constraint(equalToConstant: 278),
+            selectFailedButton.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            selectFailedButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            selectFailedButton.topAnchor.constraint(equalTo: failureScroll.bottomAnchor, constant: 8),
+            selectFailedButton.heightAnchor.constraint(equalToConstant: 30),
+            refreshFailureReportButton.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
+            refreshFailureReportButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
+            refreshFailureReportButton.topAnchor.constraint(equalTo: selectFailedButton.bottomAnchor, constant: 7),
+            refreshFailureReportButton.heightAnchor.constraint(equalToConstant: 30),
             footer.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             footer.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             footer.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -12),
@@ -1834,8 +1814,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             metricRunningValue.stringValue = "\(runningCount)"
             metricCampaignValue.stringValue = "\(campaignCount)"
             metricFailedValue.stringValue = "\(failedCount)"
-            sidebarReadyValue.stringValue = "\(ready)"
-            sidebarSelectedValue.stringValue = "\(selected)"
 
             completionProgress.maxValue =
                 Double(max(total, 1))
@@ -1859,6 +1837,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             summaryLabel.stringValue =
                 "\(ready) READY  •  \(selected) in current run  •  \(languageLabels)"
 
+            updateFailureReport()
+
             return
         }
 
@@ -1870,8 +1850,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         metricRunningValue.stringValue = "0"
         metricCampaignValue.stringValue = "0"
         metricFailedValue.stringValue = "0"
-        sidebarReadyValue.stringValue = "\(ready)"
-        sidebarSelectedValue.stringValue = "\(selected)"
 
         completionProgress.maxValue = 1
         completionProgress.doubleValue = 0
@@ -1890,6 +1868,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         summaryLabel.stringValue =
             "\(ready) READY  •  \(selected) selected  •  \(languageLabels)"
+
+        updateFailureReport()
     }
 
     private func resetAutoRunOverview(
@@ -2781,6 +2761,107 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         updateSummary()
     }
 
+    private func failureStage(
+        for state: IntegrationState,
+        error: String?
+    ) -> String {
+        let message = (error ?? "").uppercased()
+
+        if message.contains("CAMPAIGN") || state.creativeCreated {
+            return "CAMPAIGN"
+        }
+        if message.contains("CREATIVE") || state.uploadedImageURL != nil {
+            return "CREATIVE"
+        }
+        if message.contains("CONTENT") || state.contentCreated {
+            return "CONTENT"
+        }
+        if message.contains("QA") || state.geminiGenerated {
+            return "QA"
+        }
+        if message.contains("GEMINI") || state.parsed {
+            return "GEMINI"
+        }
+        return "SOURCE / VALIDATION"
+    }
+
+    private func updateFailureReport() {
+        failureScopeLabel.stringValue = autoRunOverviewActive
+            ? "FAILED IN CURRENT RUN"
+            : "LATEST FAILED STATE"
+
+        let failedRecords = dataSource.records
+            .compactMap { record -> (CampaignRecord, IntegrationState)? in
+                let state = cachedState(for: record)
+                guard statuses[record.id] == .failed || state.lastError != nil else {
+                    return nil
+                }
+                return (record, state)
+            }
+            .sorted {
+                ($0.0.stt ?? 0, $0.0.name) < ($1.0.stt ?? 0, $1.0.name)
+            }
+
+        failureReportIDs = failedRecords.map { $0.0.id }
+        failureCountValue.stringValue = "\(failedRecords.count)"
+        selectFailedButton.isEnabled = !failedRecords.isEmpty
+
+        guard !failedRecords.isEmpty else {
+            failureSummaryLabel.stringValue = "Không có FAILED trong lần chạy gần nhất"
+            failureTextView.string =
+                "CHƯA CÓ LỖI\n\n" +
+                "Khi TẠO CAMPAIGN AUTO gặp lỗi, record sẽ xuất hiện ở đây cùng stage và nguyên nhân."
+            return
+        }
+
+        var stageCounts: [String: Int] = [:]
+        for (_, state) in failedRecords {
+            let stage = failureStage(for: state, error: state.lastError)
+            stageCounts[stage, default: 0] += 1
+        }
+
+        let stageOrder = ["SOURCE / VALIDATION", "GEMINI", "QA", "CONTENT", "CREATIVE", "CAMPAIGN"]
+        failureSummaryLabel.stringValue = stageOrder
+            .compactMap { stage in
+                guard let count = stageCounts[stage] else { return nil }
+                return "\(stage): \(count)"
+            }
+            .joined(separator: "\n")
+
+        var lines = [String]()
+        for (record, state) in failedRecords.prefix(12) {
+            let stage = failureStage(for: state, error: state.lastError)
+            let number = record.stt.map(String.init) ?? "-"
+            let message = (state.lastError ?? "Không có error message")
+                .replacingOccurrences(of: "\n", with: " ")
+
+            lines.append("#\(number)  [\(stage)]")
+            lines.append(record.name)
+            lines.append("↳ \(message)")
+            lines.append("")
+        }
+
+        if failedRecords.count > 12 {
+            lines.append("+ \(failedRecords.count - 12) lỗi khác. Chọn FAILED để đưa toàn bộ vào batch retry.")
+        }
+
+        failureTextView.string = lines.joined(separator: "\n")
+        failureTextView.scrollToBeginningOfDocument(nil)
+    }
+
+    @objc func selectFailedRecords() {
+        guard !failureReportIDs.isEmpty else { return }
+        selectedIDs = Set(failureReportIDs)
+        tableView.reloadData()
+        updateSummary()
+        appendLog("✓ Đã chọn \(failureReportIDs.count) record FAILED để retry.")
+    }
+
+    @objc func refreshFailureReport() {
+        refreshAllIntegrationStates()
+        updateFailureReport()
+    }
+
     private func selectedRecords() -> [CampaignRecord] {
         let selectedLanguages = CampaignLanguageSelectionConfig.shared.selected
         return dataSource.records
@@ -3312,8 +3393,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     func setBusy(_ busy: Bool) {
         [refreshButton, selectAllButton, selectNewButton, clearButton, testPipelineButton,
          createContentButton, createCreativeButton, createCampaignButton,
-         settingsButton, quickSelectReadyButton, quickSelectNewButton,
-         quickClearButton, quickTestButton].forEach {
+         settingsButton, selectFailedButton, refreshFailureReportButton].forEach {
             $0.isEnabled = !busy
         }
         displayLinkPopup.isEnabled = !busy
