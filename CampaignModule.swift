@@ -189,7 +189,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.11")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.12")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -425,7 +425,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.11")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.12")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -435,12 +435,6 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             value: failureCountValue,
             tint: .systemRed
         )
-        let realtimeCard = makeActivityMetricCard(
-            title: "REALTIME FAILED",
-            value: realtimeFailureCountValue,
-            tint: .systemOrange
-        )
-
         selectFailedButton.title = "Chọn FAILED để retry"
         selectFailedButton.target = self
         selectFailedButton.action = #selector(selectFailedRecords)
@@ -509,7 +503,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         currentRunGrid.spacing = 6
         currentRunGrid.translatesAutoresizingMaskIntoConstraints = false
 
-        [brandIcon, eyebrow, title, version, totalCard, realtimeCard,
+        [brandIcon, eyebrow, title, version, totalCard,
          selectFailedButton, refreshFailureReportButton, currentRunTitle,
          currentRunGrid].forEach {
             sidebar.addSubview($0)
@@ -533,13 +527,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             totalCard.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
             totalCard.topAnchor.constraint(equalTo: version.bottomAnchor, constant: 18),
             totalCard.heightAnchor.constraint(equalToConstant: 55),
-            realtimeCard.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
-            realtimeCard.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
-            realtimeCard.topAnchor.constraint(equalTo: totalCard.bottomAnchor, constant: 7),
-            realtimeCard.heightAnchor.constraint(equalToConstant: 55),
             selectFailedButton.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             selectFailedButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
-            selectFailedButton.topAnchor.constraint(equalTo: realtimeCard.bottomAnchor, constant: 8),
+            selectFailedButton.topAnchor.constraint(equalTo: totalCard.bottomAnchor, constant: 8),
             selectFailedButton.heightAnchor.constraint(equalToConstant: 28),
             refreshFailureReportButton.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 12),
             refreshFailureReportButton.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),

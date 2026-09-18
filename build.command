@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "===================================================="
-echo "  Ethopex Workspace V1.11.11 — Scale Data Button Labels"
+echo "  Ethopex Workspace V1.11.12 — Expand Live Activity"
 echo "  Data Manager + Campaign Automation"
 echo "===================================================="
 echo ""
