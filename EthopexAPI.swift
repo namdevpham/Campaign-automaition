@@ -54,8 +54,22 @@ final class EthopexConfig {
         SecureStore.shared.read(account: tokenAccount)
     }
 
+    static func normalizedToken(_ raw: String) -> String {
+        var clean = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.lowercased().hasPrefix("bearer ") {
+            clean = String(clean.dropFirst("bearer ".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if clean.count >= 2,
+           clean.first == "\"",
+           clean.last == "\"" {
+            clean = String(clean.dropFirst().dropLast())
+        }
+        return clean.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     func save(token: String) throws {
-        let clean = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clean = Self.normalizedToken(token)
         if !clean.isEmpty {
             try SecureStore.shared.save(clean, account: tokenAccount)
         }
@@ -156,7 +170,7 @@ final class EthopexAPIClient {
               !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw EthopexAPIError.missingToken
         }
-        return token.trimmingCharacters(in: .whitespacesAndNewlines)
+        return EthopexConfig.normalizedToken(token)
     }
 
     private func authorizedJSONRequest(url: URL, method: String, body: Data? = nil) throws -> URLRequest {

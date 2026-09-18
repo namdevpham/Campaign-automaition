@@ -84,6 +84,12 @@ final class APISettingsWindowController: NSWindowController {
             action: #selector(testEthopex)
         )
 
+        let pasteEthopexButton = NSButton(
+            title: "Dán từ clipboard",
+            target: self,
+            action: #selector(pasteEthopexToken)
+        )
+
         let ethopexNote = NSTextField(wrappingLabelWithString:
             "HAR cho thấy endpoint GET /api/v1/profile/permissions có thể kiểm tra token mà không tạo dữ liệu. " +
             "Tool cũng đã map Upload Media và Create Creative từ request thật của Ethopex."
@@ -109,7 +115,7 @@ final class APISettingsWindowController: NSWindowController {
             geminiTitle, geminiKeyLabel, geminiKeyField, modelLabel, geminiModelField,
             testGeminiButton, geminiStatusLabel, geminiNote,
             divider,
-            ethopexTitle, tokenLabel, ethopexTokenField, testEthopexButton,
+            ethopexTitle, tokenLabel, ethopexTokenField, pasteEthopexButton, testEthopexButton,
             contentEndpoint, creativeEndpoint, ethopexStatusLabel, ethopexNote,
             saveButton, closeButton
         ]
@@ -165,8 +171,11 @@ final class APISettingsWindowController: NSWindowController {
             tokenLabel.widthAnchor.constraint(equalToConstant: 100),
 
             ethopexTokenField.leadingAnchor.constraint(equalTo: tokenLabel.trailingAnchor, constant: 10),
-            ethopexTokenField.trailingAnchor.constraint(equalTo: testEthopexButton.leadingAnchor, constant: -10),
+            ethopexTokenField.trailingAnchor.constraint(equalTo: pasteEthopexButton.leadingAnchor, constant: -8),
             ethopexTokenField.centerYAnchor.constraint(equalTo: tokenLabel.centerYAnchor),
+
+            pasteEthopexButton.trailingAnchor.constraint(equalTo: testEthopexButton.leadingAnchor, constant: -8),
+            pasteEthopexButton.centerYAnchor.constraint(equalTo: tokenLabel.centerYAnchor),
 
             testEthopexButton.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -20),
             testEthopexButton.centerYAnchor.constraint(equalTo: tokenLabel.centerYAnchor),
@@ -265,6 +274,18 @@ final class APISettingsWindowController: NSWindowController {
                 self.ethopexStatusLabel.textColor = .systemRed
             }
         }
+    }
+
+    @objc private func pasteEthopexToken() {
+        guard let pasted = NSPasteboard.general.string(forType: .string),
+              !pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            ethopexStatusLabel.stringValue = "✕ Clipboard chưa có Ethopex token."
+            ethopexStatusLabel.textColor = .systemRed
+            return
+        }
+
+        ethopexTokenField.stringValue = pasted
+        testEthopex()
     }
 
     @objc private func saveSettings() {
