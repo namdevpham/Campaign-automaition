@@ -79,6 +79,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     let languagePopupLabel = NSTextField(labelWithString: "Languages:")
     let languagePopupButton = NSButton()
     let languagePopover = NSPopover()
+    weak var languageAnchorView: NSView?
     var languageCheckButtons: [CampaignLanguage: NSButton] = [:]
 
     let settingsButton = NSButton()
@@ -188,7 +189,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.7")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.8")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -424,7 +425,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.7")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.8")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -630,6 +631,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             CreativeDisplayLinkConfig.shared.selected.displayName
         headerModel.fanpageTitle =
             FacebookPageSelectionConfig.shared.selectedPage.menuTitle
+        headerModel.fanpageOptions = [
+            FacebookPageSelectionConfig.shared.selectedPage.menuTitle
+        ]
         headerModel.summary = summaryLabel.stringValue
         let previousDuration = UserDefaults.standard.double(
             forKey: "ethopex.lastMultilingualAutoDuration"
@@ -663,12 +667,17 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
                     self.displayLinkChanged(self.displayLinkPopup)
                 },
                 onLanguages: { [weak self, weak header] in
-                    guard let self, let header else { return }
+                    guard let self else { return }
+                    let anchor = self.languageAnchorView ?? header
+                    guard let anchor else { return }
                     self.languagePopover.show(
-                        relativeTo: header.bounds,
-                        of: header,
+                        relativeTo: anchor.bounds,
+                        of: anchor,
                         preferredEdge: .maxY
                     )
+                },
+                onLanguageAnchor: { [weak self] view in
+                    self?.languageAnchorView = view
                 },
                 onFanpageChanged: { [weak self] value in
                     guard let self,
@@ -1888,6 +1897,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         controller.onSettingsChanged = { [weak self] in
             self?.refreshAPIStatus()
             self?.appendLog("API settings đã cập nhật.")
+            if !(EthopexConfig.shared.token ?? "").isEmpty {
+                self?.refreshFacebookPages(silent: true)
+            }
         }
         apiSettingsController = controller
         controller.showWindow(nil)
@@ -2533,6 +2545,10 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
 
     @objc func refreshFacebookPagesAction() {
+        if (EthopexConfig.shared.token ?? "").isEmpty {
+            openAPISettings()
+            return
+        }
         refreshFacebookPages(silent: false)
     }
 

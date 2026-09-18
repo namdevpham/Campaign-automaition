@@ -28,6 +28,7 @@ struct CampaignSwiftUIHeader: View {
     let onClear: () -> Void
     let onDisplayLinkChanged: (String) -> Void
     let onLanguages: () -> Void
+    let onLanguageAnchor: (NSView) -> Void
     let onFanpageChanged: (String) -> Void
     let onRefreshPages: () -> Void
     let onAPI: () -> Void
@@ -168,7 +169,7 @@ struct CampaignSwiftUIHeader: View {
     }
 
     private func statusPill(_ title: String, tint: Color) -> some View {
-        Text(title)
+                Text(title)
             .font(.system(size: 8, weight: .bold, design: .rounded))
             .foregroundColor(tint)
             .padding(.horizontal, 8)
@@ -264,6 +265,10 @@ struct CampaignSwiftUIHeader: View {
 
             Button(action: action) {
                 fieldSurface(value: value, tint: tint)
+                    .overlay(
+                        LanguagePopoverAnchor(onReady: onLanguageAnchor)
+                            .allowsHitTesting(false)
+                    )
             }
             .buttonStyle(.plain)
         }
@@ -291,6 +296,24 @@ struct CampaignSwiftUIHeader: View {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .stroke(tint.opacity(0.20), lineWidth: 0.6)
         )
+    }
+}
+
+private struct LanguagePopoverAnchor: NSViewRepresentable {
+    let onReady: (NSView) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            onReady(view)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            onReady(nsView)
+        }
     }
 }
 
