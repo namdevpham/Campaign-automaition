@@ -438,6 +438,7 @@ final class CampaignEngine {
     // to every Creative variant in that Source group.
     func createContentReal(
         records: [CampaignRecord],
+        requestInterval: TimeInterval = 1.6,
         onStatus:
             @escaping (
                 UUID,
@@ -466,6 +467,7 @@ final class CampaignEngine {
 
         createContentRealPerContentOwner(
             records: owners,
+            requestInterval: requestInterval,
             onStatus:
                 forwardedStatus,
             onLog: onLog
@@ -1064,6 +1066,7 @@ final class CampaignEngine {
 
     private func createContentRealPerContentOwner(
         records: [CampaignRecord],
+        requestInterval: TimeInterval,
         onStatus: @escaping (UUID, JobStatus) -> Void,
         onLog: @escaping (String) -> Void,
         completion: @escaping () -> Void
@@ -1316,8 +1319,6 @@ final class CampaignEngine {
                         throw EthopexAPIError.invalidResponse
                     }
 
-                    Thread.sleep(forTimeInterval: 1.6)
-
                 } catch {
                     state.lastError = error.localizedDescription
                     try? self.stateStore.save(state, folder: folder)
@@ -1327,6 +1328,12 @@ final class CampaignEngine {
                         onLog("    - \(error.localizedDescription)")
                         onLog("")
                     }
+                }
+
+                // Pace both successful and failed requests. A transient 429/5xx
+                // must not cause the next FAILED record to hit the API instantly.
+                if requestInterval > 0 {
+                    Thread.sleep(forTimeInterval: requestInterval)
                 }
             }
 
@@ -1377,6 +1384,171 @@ final class CampaignEngine {
                 completion: completion
             )
         }
+    }
+
+    // Smart retry for FAILED records. Each record is inspected from its
+    // persisted integration_state.json and enters the pipeline only at the
+    // first unfinished stage. Successful remote IDs are never discarded.
+    func resumeFailedCampaignPipeline(
+        records: [CampaignRecord],
+        requestInterval: TimeInterval = 3.0,
+        onStatus: @escaping (UUID, JobStatus) -> Void,
+        onLog: @escaping (String) -> Void,
+        completion: @escaping () -> Void
+    ) {
+        func state(for record: CampaignRecord) -> IntegrationState {
+            stateStore.load(
+                folder: dataSource.folder(for: record),
+                record: record
+            )
+        }
+
+        func needsPreparation(_ value: IntegrationState) -> Bool {
+            !value.parsed ||
+            !value.geminiGenerated ||
+            !value.qaPassed
+        }
+
+        func finish() {
+            for record in records {
+                let folder = dataSource.folder(for: record)
+                var value = stateStore.load(folder: folder, record: record)
+
+                if let campaignID = value.campaignID,
+                   !campaignID.isEmpty {
+                    value.lastError = nil
+                    try? stateStore.save(value, folder: folder)
+                    ui {
+                        onStatus(record.id, .campaignDone)
+                    }
+                }
+            }
+
+            DispatchQueue.main.async {
+                completion()
+            }
+        }
+
+        func runCampaignStage() {
+            let pending = records.filter { record in
+                let value = state(for: record)
+                return value.creativeCreated &&
+                    !(value.creativeID ?? "").isEmpty &&
+                    (value.campaignID ?? "").isEmpty
+            }
+
+            guard !pending.isEmpty else {
+                self.ui {
+                    onLog("✓ RETRY CAMPAIGN: không có record cần gọi lại API.")
+                }
+                finish()
+                return
+            }
+
+            self.ui {
+                onLog("")
+                onLog("RETRY STAGE — CAMPAIGN (\(pending.count))")
+            }
+
+            createCampaignReal(
+                records: pending,
+                requestInterval: requestInterval,
+                onStatus: onStatus,
+                onLog: onLog,
+                completion: finish
+            )
+        }
+
+        func runCreativeStage() {
+            let pending = records.filter { record in
+                let value = state(for: record)
+                return value.contentCreated &&
+                    !(value.contentID ?? "").isEmpty &&
+                    (!value.creativeCreated ||
+                     (value.creativeID ?? "").isEmpty)
+            }
+
+            guard !pending.isEmpty else {
+                self.ui {
+                    onLog("✓ RETRY CREATIVE: không có record cần gọi lại API.")
+                }
+                runCampaignStage()
+                return
+            }
+
+            self.ui {
+                onLog("")
+                onLog("RETRY STAGE — IMAGE / CREATIVE (\(pending.count))")
+            }
+
+            createCreativeReal(
+                records: pending,
+                requestInterval: requestInterval,
+                onStatus: onStatus,
+                onLog: onLog,
+                completion: runCampaignStage
+            )
+        }
+
+        func runContentStage() {
+            let pending = records.filter { record in
+                let value = state(for: record)
+                return value.qaPassed &&
+                    (!value.contentCreated ||
+                     (value.contentID ?? "").isEmpty)
+            }
+
+            guard !pending.isEmpty else {
+                self.ui {
+                    onLog("✓ RETRY CONTENT: không có record cần gọi lại API.")
+                }
+                runCreativeStage()
+                return
+            }
+
+            self.ui {
+                onLog("")
+                onLog("RETRY STAGE — CONTENT (\(pending.count))")
+            }
+
+            createContentReal(
+                records: pending,
+                requestInterval: requestInterval,
+                onStatus: onStatus,
+                onLog: onLog,
+                completion: runCreativeStage
+            )
+        }
+
+        let preparationPending = records.filter {
+            needsPreparation(state(for: $0))
+        }
+
+        self.ui {
+            onLog("")
+            onLog("========== SMART RESUME PLAN ==========")
+            onLog("FAILED input: \(records.count)")
+            onLog("Landing / Gemini / QA: \(preparationPending.count)")
+            onLog("Các record còn lại bắt đầu trực tiếp từ Content, Creative hoặc Campaign.")
+        }
+
+        guard !preparationPending.isEmpty else {
+            runContentStage()
+            return
+        }
+
+        self.ui {
+            onLog("")
+            onLog("RETRY STAGE — LANDING / GEMINI / QA (\(preparationPending.count))")
+            onLog("Source chỉ được parse local; cache QA hợp lệ vẫn được tái sử dụng.")
+        }
+
+        testPipeline(
+            records: preparationPending,
+            onStatus: onStatus,
+            onLog: onLog,
+            completion: runContentStage
+        )
     }
 
 
@@ -1431,6 +1603,7 @@ final class CampaignEngine {
 
     func createCreativeReal(
         records: [CampaignRecord],
+        requestInterval: TimeInterval = 1.6,
         onStatus: @escaping (UUID, JobStatus) -> Void,
         onLog: @escaping (String) -> Void,
         completion: @escaping () -> Void
@@ -1645,8 +1818,6 @@ final class CampaignEngine {
                         throw EthopexAPIError.invalidResponse
                     }
 
-                    Thread.sleep(forTimeInterval: 1.6)
-
                 } catch {
                     state.lastError = error.localizedDescription
                     try? self.stateStore.save(state, folder: folder)
@@ -1657,6 +1828,10 @@ final class CampaignEngine {
                         onLog("")
                     }
                 }
+
+                if requestInterval > 0 {
+                    Thread.sleep(forTimeInterval: requestInterval)
+                }
             }
 
             DispatchQueue.main.async { completion() }
@@ -1666,6 +1841,7 @@ final class CampaignEngine {
 
     func createCampaignReal(
         records: [CampaignRecord],
+        requestInterval: TimeInterval = 1.6,
         onStatus: @escaping (UUID, JobStatus) -> Void,
         onLog: @escaping (String) -> Void,
         completion: @escaping () -> Void
@@ -1890,8 +2066,6 @@ final class CampaignEngine {
                         throw EthopexAPIError.invalidResponse
                     }
 
-                    Thread.sleep(forTimeInterval: 1.6)
-
                 } catch {
                     state.lastError = error.localizedDescription
                     try? self.stateStore.save(
@@ -1905,6 +2079,10 @@ final class CampaignEngine {
                         onLog("    - \(error.localizedDescription)")
                         onLog("")
                     }
+                }
+
+                if requestInterval > 0 {
+                    Thread.sleep(forTimeInterval: requestInterval)
                 }
             }
 

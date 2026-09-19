@@ -59,6 +59,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
     let createCreativeButton = NSButton()
     let createCampaignButton = NSButton()
     let selectFailedButton = NSButton()
+    var currentRunFailedGesture: NSClickGestureRecognizer?
+    weak var currentRunFailedCard: NSView?
     let refreshFailureReportButton = NSButton()
     let failureScopeLabel = NSTextField(labelWithString: "LATEST FAILED STATE")
     let failureCountValue = NSTextField(labelWithString: "0")
@@ -189,7 +191,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.12")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.13")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -284,9 +286,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         realtimeScroll.backgroundColor = WorkspaceUI.canvas
         realtimeScroll.documentView = realtimeFailureTextView
 
-        selectFailedButton.title = "Chọn record FAILED để retry"
+        selectFailedButton.title = "Kiểm tra & chạy lại FAILED"
         selectFailedButton.target = self
-        selectFailedButton.action = #selector(selectFailedRecords)
+        selectFailedButton.action = #selector(retryFailedRecords)
         selectFailedButton.translatesAutoresizingMaskIntoConstraints = false
         WorkspaceUI.styleAccentButton(
             selectFailedButton,
@@ -425,7 +427,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         title.font = .systemFont(ofSize: 19, weight: .bold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.12")
+        let version = NSTextField(labelWithString: "CAMPAIGN AUTO  •  v1.11.13")
         version.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
         version.textColor = .tertiaryLabelColor
         version.translatesAutoresizingMaskIntoConstraints = false
@@ -435,9 +437,9 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             value: failureCountValue,
             tint: .systemRed
         )
-        selectFailedButton.title = "Chọn FAILED để retry"
+        selectFailedButton.title = "Kiểm tra & chạy lại FAILED"
         selectFailedButton.target = self
-        selectFailedButton.action = #selector(selectFailedRecords)
+        selectFailedButton.action = #selector(retryFailedRecords)
         selectFailedButton.translatesAutoresizingMaskIntoConstraints = false
         WorkspaceUI.styleAccentButton(
             selectFailedButton,
@@ -478,6 +480,21 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             title: "FAILED",
             value: metricFailedValue,
             tint: .systemRed
+        )
+        let failedGesture = NSClickGestureRecognizer(
+            target: self,
+            action: #selector(retryFailedRecords)
+        )
+        failedGesture.isEnabled = false
+        failedCard.addGestureRecognizer(failedGesture)
+        currentRunFailedGesture = failedGesture
+        currentRunFailedCard = failedCard
+        failedCard.toolTip =
+            "Bấm để kiểm tra lỗi và tiếp tục từ đúng stage bị lỗi."
+        failedCard.setAccessibilityElement(true)
+        failedCard.setAccessibilityRole(.button)
+        failedCard.setAccessibilityLabel(
+            "Chạy lại các lỗi FAILED của Current Run"
         )
 
         runTimeLabel.font = .monospacedSystemFont(ofSize: 10, weight: .bold)
@@ -2013,7 +2030,12 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             metricRunningValue.stringValue = "\(runningCount)"
             metricCampaignValue.stringValue = "\(campaignCount)"
             metricFailedValue.stringValue = "\(failedCount)"
-
+            currentRunFailedGesture?.isEnabled =
+                failedCount > 0 && !headerModel.isBusy
+            currentRunFailedCard?.toolTip =
+                failedCount > 0
+                ? "Chạy lại \(failedCount) lỗi từ đúng stage bị lỗi."
+                : "Current Run không có lỗi cần chạy lại."
             completionProgress.maxValue =
                 Double(max(total, 1))
             completionProgress.doubleValue =
@@ -2051,6 +2073,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         metricRunningValue.stringValue = "0"
         metricCampaignValue.stringValue = "0"
         metricFailedValue.stringValue = "0"
+        currentRunFailedGesture?.isEnabled = false
 
         completionProgress.maxValue = 1
         completionProgress.doubleValue = 0
@@ -2164,6 +2187,7 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             autoRunOverviewTerminalIDs.insert(id)
 
         case .campaignDone, .done:
+            autoRunOverviewFailedIDs.remove(id)
             autoRunOverviewTerminalIDs.insert(id)
 
             var state = integrationStates[id]
@@ -2192,7 +2216,10 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
             }
 
         default:
-            break
+            // A retry has started from the failed stage. Remove the old
+            // terminal/error marker so CURRENT RUN reflects the live retry.
+            autoRunOverviewFailedIDs.remove(id)
+            autoRunOverviewTerminalIDs.remove(id)
         }
     }
 
@@ -3026,7 +3053,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
 
         failureReportIDs = failedRecords.map { $0.0.id }
         failureCountValue.stringValue = "\(failedRecords.count)"
-        selectFailedButton.isEnabled = !failedRecords.isEmpty
+        selectFailedButton.isEnabled =
+            !failedRecords.isEmpty && !headerModel.isBusy
 
         guard !failedRecords.isEmpty else {
             failureSummaryLabel.stringValue = "Không có FAILED trong lần chạy gần nhất"
@@ -3111,6 +3139,240 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
         tableView.reloadData()
         updateSummary()
         appendLog("✓ Đã chọn \(failureReportIDs.count) record FAILED để retry.")
+    }
+
+    private func retryStage(
+        for state: IntegrationState
+    ) -> String? {
+        if !state.parsed {
+            return "SOURCE / VALIDATION"
+        }
+        if !state.geminiGenerated {
+            return "GEMINI"
+        }
+        if !state.qaPassed {
+            return "QA / GEMINI REPAIR"
+        }
+        if !state.contentCreated || (state.contentID ?? "").isEmpty {
+            return "CONTENT"
+        }
+        if (state.uploadedImageURL ?? "").isEmpty {
+            return "IMAGE UPLOAD"
+        }
+        if !state.creativeCreated || (state.creativeID ?? "").isEmpty {
+            return "CREATIVE"
+        }
+        if (state.campaignID ?? "").isEmpty {
+            return "CAMPAIGN"
+        }
+        return nil
+    }
+
+    private func prepareOverviewForRetry(
+        records: [CampaignRecord]
+    ) {
+        let retryIDs = Set(records.map(\.id))
+
+        if !autoRunOverviewActive {
+            autoRunOverviewActive = true
+            autoRunOverviewInputSourceCount = records.count
+            autoRunExpectedVariantCount = records.count
+            autoRunOverviewScopeIDs = retryIDs
+            autoRunOverviewNewVariantIDs.removeAll()
+            autoRunOverviewCreatedCampaignIDs.removeAll()
+            autoRunOverviewPreparationFailureCount = 0
+            autoRunOverviewBaselineCampaignIDs = Dictionary(
+                uniqueKeysWithValues: records.map { record in
+                    let state = cachedState(for: record)
+                    return (record.id, state.campaignID ?? "")
+                }
+            )
+        } else {
+            autoRunOverviewScopeIDs.formUnion(retryIDs)
+            autoRunExpectedVariantCount = max(
+                autoRunExpectedVariantCount,
+                autoRunOverviewScopeIDs.count
+            )
+        }
+
+        autoRunOverviewFailedIDs.subtract(retryIDs)
+        autoRunOverviewTerminalIDs.subtract(retryIDs)
+        autoRunOverviewPreparationActive = false
+        autoRunOverviewFinished = false
+    }
+
+    @objc func retryFailedRecords() {
+        refreshAllIntegrationStates()
+        updateFailureReport()
+
+        let preferredIDs: [UUID]
+        if autoRunOverviewActive,
+           !autoRunOverviewFailedIDs.isEmpty {
+            preferredIDs = Array(autoRunOverviewFailedIDs)
+        } else {
+            preferredIDs = failureReportIDs
+        }
+
+        // A previous interruption can leave lastError/status FAILED even when
+        // Campaign IDs were already persisted. Repair those stale markers
+        // locally; they must never trigger another remote request.
+        for id in preferredIDs {
+            guard let record = dataSource.records.first(where: { $0.id == id }) else {
+                continue
+            }
+
+            let folder = dataSource.folder(for: record)
+            var state = engine.stateStore.load(folder: folder, record: record)
+
+            if retryStage(for: state) == nil {
+                state.lastError = nil
+                try? engine.stateStore.save(state, folder: folder)
+                integrationStates[id] = state
+                statuses[id] = .campaignDone
+                autoRunOverviewFailedIDs.remove(id)
+                autoRunOverviewTerminalIDs.insert(id)
+            }
+        }
+
+        let records = dataSource.records
+            .filter { preferredIDs.contains($0.id) }
+            .filter { retryStage(for: cachedState(for: $0)) != nil }
+            .sorted {
+                ($0.stt ?? 0, $0.name) < ($1.stt ?? 0, $1.name)
+            }
+
+        guard !records.isEmpty else {
+            showAlert(
+                "Không còn lỗi cần chạy lại",
+                "Tool đã quét lại state và không tìm thấy stage FAILED chưa hoàn tất."
+            )
+            return
+        }
+
+        var stageCounts: [String: Int] = [:]
+        for record in records {
+            if let stage = retryStage(for: cachedState(for: record)) {
+                stageCounts[stage, default: 0] += 1
+            }
+        }
+
+        let needsGemini = stageCounts.keys.contains {
+            $0 == "SOURCE / VALIDATION" ||
+            $0 == "GEMINI" ||
+            $0 == "QA / GEMINI REPAIR"
+        }
+        let needsEthopex = stageCounts.keys.contains {
+            $0 == "CONTENT" ||
+            $0 == "IMAGE UPLOAD" ||
+            $0 == "CREATIVE" ||
+            $0 == "CAMPAIGN"
+        }
+
+        if needsGemini,
+           (GeminiConfig.shared.apiKey ?? "").isEmpty {
+            showAlert(
+                "Chưa có Gemini API Key",
+                "Có lỗi cần tiếp tục từ Gemini/QA. Hãy lưu Gemini API key trước."
+            )
+            return
+        }
+
+        if needsEthopex,
+           (EthopexConfig.shared.token ?? "").isEmpty {
+            showAlert(
+                "Chưa có Ethopex Token",
+                "Có lỗi cần tiếp tục từ Content/Creative/Campaign. Hãy lưu Bearer Token trước."
+            )
+            return
+        }
+
+        let orderedStages = [
+            "SOURCE / VALIDATION",
+            "GEMINI",
+            "QA / GEMINI REPAIR",
+            "CONTENT",
+            "IMAGE UPLOAD",
+            "CREATIVE",
+            "CAMPAIGN"
+        ]
+        let stageSummary = orderedStages.compactMap { stage -> String? in
+            guard let count = stageCounts[stage] else { return nil }
+            return "• \(stage): \(count)"
+        }.joined(separator: "\n")
+
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText =
+            "Kiểm tra và chạy lại \(records.count) FAILED?"
+        alert.informativeText =
+            "Tool đã quét state và sẽ tiếp tục từ stage đầu tiên chưa hoàn tất:\n\n" +
+            stageSummary +
+            "\n\nCác ID Content, Media, Creative và Campaign đã thành công sẽ được giữ nguyên. " +
+            "Batch retry chạy tuần tự với nhịp nghỉ 3 giây để giảm tải API và tránh tạo trùng."
+        alert.addButton(withTitle: "CHẠY LẠI TỪ STAGE LỖI")
+        alert.addButton(withTitle: "Hủy")
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return
+        }
+
+        selectedIDs = Set(records.map(\.id))
+        realtimeFailureIDs.subtract(Set(records.map(\.id)))
+        prepareOverviewForRetry(records: records)
+        tableView.reloadData()
+        updateSummary()
+
+        setBusy(true)
+        startMultilingualRunTimer(
+            sourceCount: records.count,
+            targetLanguageCount: 1
+        )
+
+        appendLog("")
+        appendLog("========== SMART FAILED RETRY ==========")
+        appendLog("Đã quét: \(records.count) record FAILED")
+        stageSummary.split(separator: "\n").forEach {
+            appendLog(String($0))
+        }
+        appendLog("✓ Giữ nguyên mọi stage đã thành công")
+        appendLog("✓ Retry tuần tự • cooldown 3 giây")
+
+        engine.resumeFailedCampaignPipeline(
+            records: records,
+            requestInterval: 3.0,
+            onStatus: { [weak self] id, status in
+                self?.handleStatusChange(id: id, status: status)
+            },
+            onLog: { [weak self] line in
+                self?.appendLog(line)
+            },
+            completion: { [weak self] in
+                guard let self else { return }
+
+                self.refreshAllIntegrationStates()
+                self.finalizeAutoRunOverview()
+
+                let remaining = records.filter {
+                    self.retryStage(for: self.cachedState(for: $0)) != nil
+                }
+
+                self.finishMultilingualRunTimer(
+                    outcome: remaining.isEmpty ? "DONE" : "FAILED"
+                )
+                self.setBusy(false)
+                self.tableView.reloadData()
+                self.updateSummary()
+                self.updateFailureReport()
+
+                self.appendLog("")
+                self.appendLog("========== SMART RETRY HOÀN TẤT ==========")
+                self.appendLog(
+                    remaining.isEmpty
+                    ? "✓ Tất cả FAILED đã tiếp tục lên Campaign thành công."
+                    : "⚠ Còn \(remaining.count) record lỗi; có thể bấm FAILED để retry tiếp."
+                )
+            }
+        )
     }
 
     @objc func refreshFailureReport() {
@@ -3668,6 +3930,8 @@ final class CampaignWindowController: NSWindowController, NSTableViewDataSource,
          settingsButton, selectFailedButton, refreshFailureReportButton].forEach {
             $0.isEnabled = !busy
         }
+        currentRunFailedGesture?.isEnabled =
+            !busy && (Int(metricFailedValue.stringValue) ?? 0) > 0
         displayLinkPopup.isEnabled = !busy
         fanpagePopup.isEnabled = !busy
         refreshPagesButton.isEnabled = !busy
